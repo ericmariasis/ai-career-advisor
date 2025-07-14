@@ -1,18 +1,20 @@
-// app/insightsClient.ts
 'use client';
 import aa from 'search-insights';
 
-const INSIGHTS_ALREADY_INITED = (globalThis as any)._algoliaInsightsInit;
-
-if (!INSIGHTS_ALREADY_INITED) {
+/* one-time init during Fast-Refresh */
+if (!(globalThis as any)._algoliaInsightsInit) {
   aa('init', {
-    appId:   process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-    apiKey:  process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY!, // **search-only key**
-    useCookie: true,             // lets Algolia create an anon userToken
+    appId:  process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
+    apiKey: process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY!,   // search-only key
+    useCookie: true,      // lets Algolia set an anonymous userToken cookie
   });
-
-  // mark so we don’t init twice on React Fast Refresh
   (globalThis as any)._algoliaInsightsInit = true;
+}
+
+/* ----------  ★ NEW helper so cards can grab userToken  ---------- */
+export function getUserToken(): string {
+  const token = aa('getUserToken') as string | undefined;
+  return token ?? 'unknown-user';
 }
 
 export default aa;

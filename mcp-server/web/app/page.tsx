@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import type { Job } from './components/JobCard';
 import axios from 'axios';
-import SearchBar from './components/SearchBar';
-import JobCard from './components/JobCard';
-import Pagination from './components/Pagination';       // NEW ←
+import SearchBar  from './components/SearchBar';
+import JobCard    from './components/JobCard';
+import Pagination from './components/Pagination';
 
 type AlgoliaResponse = {
   hits: Job[];
@@ -16,41 +16,43 @@ type AlgoliaResponse = {
 };
 
 export default function Home() {
-  const [query, setQuery] = useState('');                   // NEW: track the term
-  const [page,  setPage]  = useState(0);                    // NEW: track the page
+  const [query, setQuery]     = useState('');
+  const [page,  setPage]      = useState(0);
   const [result, setResult]   = useState<AlgoliaResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [savedSet, setSaved]  = useState<Set<string>>(new Set());  // ★ NEW
 
-  /* ---------------- core search helper ---------------- */
-  const search = async (q: string, page = 0) => {
+  /* ---------------- search helper ---------------- */
+  async function search(q: string, page = 0) {
     setLoading(true);
     try {
       const { data } = await axios.get<AlgoliaResponse>('/api/search', {
         params: { q, page, hitsPerPage: 10 },
       });
       setResult(data);
-      setQuery(q);          // NEW: remember last query
-      setPage(page);        // NEW
-    } catch (err) {
-      console.error(err);
-      alert('Search failed.');
+      setQuery(q);
+      setPage(page);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  // initial load (optional)
-  useEffect(() => {
-    search('');
-  }, []);
+  /* bubble up save / unsave from JobCard */
+  function handleToggle(id: string, saved: boolean) {
+    setSaved((prev) => {
+      const next = new Set(prev);
+      saved ? next.add(id) : next.delete(id);
+      return next;
+    });
+  }
 
-  /* ---------------- component output ---------------- */
+  useEffect(() => { search(''); }, []);
+
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       <h1 className="text-2xl font-bold">AI Job Explorer</h1>
 
-      {/* call search(term, 0) so we reset to first page on a new query */}
-      <SearchBar onSearch={term => search(term, 0)} />
+      <SearchBar onSearch={(term) => search(term, 0)} />
 
       {loading && <p>Loading…</p>}
 
@@ -61,17 +63,17 @@ export default function Home() {
           </p>
 
           <div className="grid gap-4">
-                      {result.hits.map((job, idx) => (
+            {result.hits.map((job, idx) => (
               <JobCard
                 key={job.objectID}
-                job={job}
+                job={{ ...job, __position: page * 10 + idx + 1 }}
                 queryID={result.queryID}
-                position={page * 10 + idx + 1}   // 1-based absolute pos
+                initiallySaved={savedSet.has(job.objectID)}     // ★ NEW
+                onToggle={handleToggle}                         // ★ NEW
               />
             ))}
           </div>
 
-          {/* ---------- NEW: Pagination ---------- */}
           {result.nbPages > 1 && (
             <Pagination
               page={page}

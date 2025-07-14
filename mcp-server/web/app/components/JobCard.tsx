@@ -1,7 +1,12 @@
 /* eslint-disable react/require-default-props */
 'use client';
-import aa from '../insightsClient';        // ← use the inited client
-import { HeroCheckCircle } from '@heroicons/react/24/solid';
+import { useState } from 'react';
+import axios from 'axios';
+import aa, { getUserToken } from '../insightsClient';        // ★ CHG
+import {
+  HeartIcon as HeartSolid,
+  HeartIcon as HeartOutline,
+} from '@heroicons/react/24/solid';                          // ★ NEW
 
 export type Job = {
   objectID: string;
@@ -9,43 +14,80 @@ export type Job = {
   company?: string | null;
   location: string;
   salary_estimate?: number;
-    skills: string[];
+  skills: string[];
 
-  // extra Algolia meta (present when you requested clickAnalytics=true)
+  // Algolia meta added in page.tsx
   __queryID?: string;
   __position?: number;
 };
 
 interface Props {
-      job: Job;
-      queryID: string;      // always provided by the parent now
-      position: number;     // always provided
+  job: Job;
+  queryID: string;                    // parent always supplies
+  initiallySaved?: boolean;           // ★ NEW
+  onToggle?: (id: string, saved: boolean) => void; // ★ NEW
+}
+
+export default function JobCard({
+  job,
+  queryID,
+  initiallySaved = false,
+  onToggle,
+}: Props) {
+  const [saved, setSaved] = useState(initiallySaved);
+  const userToken = getUserToken();
+
+  /* ---------- handle “Save” / “Unsave” ---------- */
+  async function toggleSave(e: React.MouseEvent) {
+    e.stopPropagation();        // don’t trigger card click
+    const next = !saved;
+
+    try {
+      await axios.post('/api/favorites', {
+        objectID:  job.objectID,
+        queryID,                         // always present
+        position: job.__position ?? 1,
+        userToken,
+      });
+      setSaved(next);
+      onToggle?.(job.objectID, next);
+    } catch (err) {
+      console.error(err);
+      alert('Could not save job – please retry.');
     }
-    
-    export default function JobCard({ job, queryID, position }: Props) {
-    
-      const handleClick = () => {
-            const qid = job.__queryID ?? queryID;
-    
-        if (qid) {
-          aa('clickedObjectIDsAfterSearch', {
-            index: 'jobs',          // 🚨 must match your Algolia index name
-            eventName: 'Job clicked',
-                    queryID:   qid,
-                    objectIDs: [job.objectID],
-                    positions: [position],
-          });
-        }
-    
-        // later: open a modal / navigate to /jobs/[id]
-      };
-    
+  }
+
+  /* ---------- click fires Algolia click-event ---------- */
+  function handleCardClick() {
+    aa('clickedObjectIDsAfterSearch', {
+      index: 'jobs',
+      eventName: 'Job clicked',
+      queryID,
+      objectIDs: [job.objectID],
+      positions: [job.__position ?? 1],
+    });
+    // later: open details modal / page
+  }
+
   return (
-        <article
-      onClick={handleClick}
-      className="cursor-pointer border rounded p-4 shadow-sm hover:shadow-md transition"
+    <article
+      onClick={handleCardClick}
+      className="relative cursor-pointer border rounded p-4 shadow-sm hover:shadow-md transition"
     >
-      <h3 className="font-semibold text-lg">{job.title}</h3>
+      {/* Save icon */}
+      <button
+        onClick={toggleSave}
+        title={saved ? 'Unsave' : 'Save job'}
+        className="absolute right-2 top-2 text-indigo-600 hover:text-indigo-800"
+      >
+        {saved ? (
+          <HeartSolid className="w-5 h-5 fill-red-500" />
+        ) : (
+          <HeartOutline className="w-5 h-5" />
+        )}
+      </button>
+
+      <h3 className="font-semibold text-lg pe-6">{job.title}</h3>
       <p className="text-sm text-gray-600">
         {job.company ?? 'Unknown company'} — {job.location}
       </p>
@@ -57,14 +99,15 @@ interface Props {
       )}
 
       <ul className="flex flex-wrap gap-1 mt-2">
-        {job.skills.slice(0, 5).map(s => (
-          <li key={s} className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs">
+        {job.skills.slice(0, 5).map((s) => (
+          <li
+            key={s}
+            className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs"
+          >
             {s}
           </li>
         ))}
       </ul>
-
-      {/* TODO: Add “Save” / “More info” actions later */}
     </article>
   );
 }

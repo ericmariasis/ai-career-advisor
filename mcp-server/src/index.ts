@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv  from 'dotenv';
 import searchRouter from './routes/search';
+import favoritesRouter  from './routes/favorites';
 import { jobsIndex } from './algolia'; // still used by /recommend
 
 dotenv.config();
@@ -12,6 +13,9 @@ app.use(express.json());
 /*  Search API (GET /api/search?... )                            */
 /* ------------------------------------------------------------- */
 app.use('/api/search', searchRouter);
+
+/* ---------------- Favorites -------------- */
+app.use('/api/favorites',  favoritesRouter);  // ← NEW
 
 /* ------------------------------------------------------------- */
 /*  (Optional) quick “top-5” recommender                         */

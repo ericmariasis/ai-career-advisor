@@ -13,8 +13,19 @@ if (!(globalThis as any)._algoliaInsightsInit) {
 
 /* ----------  ★ NEW helper so cards can grab userToken  ---------- */
 export function getUserToken(): string {
-  const token = aa('getUserToken') as string | undefined;
-  return token ?? 'unknown-user';
+  try {
+    // • new SDKs expose aa.getUserToken()
+    // • older ones use the command syntax: aa('getUserToken')
+    // • neither has proper typings yet → cast to any
+    const token =
+      (aa as any).getUserToken?.() ??
+      (aa as any)('getUserToken')
+
+    if (typeof token === 'string' && token.length) return token
+  } catch {
+    /* ignore */
+  }
+  return 'unknown-user'
 }
 
 export default aa;

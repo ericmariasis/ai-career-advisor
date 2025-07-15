@@ -2,6 +2,7 @@ import express from 'express';
 import dotenv  from 'dotenv';
 import searchRouter from './routes/search';
 import favoritesRouter  from './routes/favorites';
+import resumeRouter from './routes/resume';
 import { jobsIndex } from './algolia'; // still used by /recommend
 
 dotenv.config();
@@ -17,6 +18,9 @@ app.use('/api/search', searchRouter);
 /* ---------------- Favorites -------------- */
 app.use('/api/favorites',  favoritesRouter);  // ← NEW
 
+/* ---------------- Resume -------------- */
+app.use('/api/resume',  resumeRouter);  // ← NEW
+
 /* ------------------------------------------------------------- */
 /*  (Optional) quick “top-5” recommender                         */
 /* ------------------------------------------------------------- */
@@ -29,6 +33,7 @@ app.post('/recommend', async (_req, res) => {
 /*  Boot server                                                  */
 /* ------------------------------------------------------------- */
 const PORT = process.env.PORT || 4000;
+export default app;
 app.listen(PORT, () =>
   console.log(`✅  MCP server running on http://localhost:${PORT}`),
 );

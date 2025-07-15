@@ -48,6 +48,7 @@ export default function JobCard({
         queryID,                         // always present
         position: job.__position ?? 1,
         userToken,
+        save: next,
       });
       setSaved(next);
       onToggle?.(job.objectID, next);

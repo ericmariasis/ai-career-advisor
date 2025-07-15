@@ -1,13 +1,41 @@
 import { Router, Request, Response } from 'express';
 import { jobsIndex } from '../algolia';
+import type { Job } from '../types'; 
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// GET /api/search/job/:id   → return one Algolia record by objectID
+// ---------------------------------------------------------------------------
+router.get('/job/:id', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ error: 'Missing job id' });
+    }
+  
+    try {
+      // generic <Job> keeps TypeScript happy if you imported the type
+      const job = await jobsIndex.getObject<Job>(id);
+      res.json(job);
+    } catch (err: any) {
+      console.error(err);
+  
+      // Algolia throws a 404-style error when object not found
+      if (err.status === 404 || err.statusCode === 404) {
+        return res.status(404).json({ error: 'Job not found' });
+      }
+  
+      res.status(500).json({ error: 'Failed to fetch job' });
+    }
+  });
+  
 
 router.get('/', async (req: Request, res: Response) => {
     const {
       q = '',
       page = '0',
       hitsPerPage = '20',
+      tag = ''
     } = req.query as Record<string, string>;
   
     // ─────────────────────────────────────────────────────────
@@ -31,12 +59,20 @@ router.get('/', async (req: Request, res: Response) => {
     );
   
     try {
-      const algoliaResponse = await jobsIndex.search(q, {
-        page:        pageNum,
-        hitsPerPage: hitsPerPageNum,
-        clickAnalytics: true,
-        analyticsTags:  ['ai-career-advisor'],
-      });
+        const options: any = {
+            page: pageNum,
+            hitsPerPage: hitsPerPageNum,
+            clickAnalytics: true,
+            analyticsTags: ['ai-career-advisor'],
+          };
+        
+          // if a tag filter was passed, apply it
+          if (tag) {
+            options.filters = `tags:"${tag}"`;
+          }
+        
+          // perform the search with filters
+          const algoliaResponse = await jobsIndex.search(q, options);
   
       res.json({
         queryID: algoliaResponse.queryID,

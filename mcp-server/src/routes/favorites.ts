@@ -11,17 +11,13 @@ const router = Router()
  */
 router.post('/', async (req, res) => {
   try {
-    const {
-      objectID,
-      queryID,
-      position = 1,
-      userToken,
-      save = true,
-    } = req.body
-
-    if (!objectID || !queryID || !userToken) {
-      return res.status(400).json({ error: 'Missing body fields' })
-    }
+      const { objectID, userToken, save = true } = req.body;
+      // queryID & position are optional﻿
+      const { queryID = undefined, position = 0 } = req.body;
+    
+      if (!objectID || !userToken) {
+        return res.status(400).json({ error: 'objectID and userToken are required' });
+      }
 
     /* 1️⃣  persist ------------------------------------------------ */
     const total = await toggleFavorite(userToken, objectID, save)
@@ -80,5 +76,30 @@ router.get('/', (req, res) => {
     const ids = getFavorites(userToken);   // ← new helper (sync)
     return res.json({ ids });
   });
+
+  /* -------------------------------------------------------------
+ * GET /api/favorites/details?userToken=...
+ * → returns the full job objects for the user’s saved IDs
+ * ------------------------------------------------------------*/
+router.get('/details', async (req, res) => {
+    const { userToken } = req.query as { userToken?: string };
+    if (!userToken) {
+      return res.status(400).json({ error: 'userToken query-param required' });
+    }
+  
+    const ids = getFavorites(userToken);          // LowDB helper you already have
+    if (ids.length === 0) return res.json([]);    // nothing saved
+  
+    try {
+      // bulk-fetch up to 1000 objects in one round-trip
+      const { results } = await jobsIndex.getObjects(ids);
+      // Algolia returns null for any missing IDs → filter them out
+      res.json(results.filter(Boolean));
+    } catch (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Failed to fetch saved jobs' });
+    }
+  });
+  
 
 export default router

@@ -1,12 +1,10 @@
 /* eslint-disable react/require-default-props */
 'use client';
-import { useState } from 'react';
+import { MouseEvent, useState } from 'react';
 import axios from 'axios';
 import aa, { getUserToken } from '../insightsClient';        // ★ CHG
-import {
-  HeartIcon as HeartSolid,
-  HeartIcon as HeartOutline,
-} from '@heroicons/react/24/solid';                          // ★ NEW
+import { HeartIcon as HeartSolid }   from '@heroicons/react/24/solid';
+import { HeartIcon as HeartOutline } from '@heroicons/react/24/outline';
 
 export type Job = {
   objectID: string;
@@ -19,13 +17,20 @@ export type Job = {
   // Algolia meta added in page.tsx
   __queryID?: string;
   __position?: number;
+  
+  /* NEW optional fields used by the modal.
+     They’re safe to leave undefined for now. */
+  description?: string;
+  applyUrl?: string;
 };
 
 interface Props {
   job: Job;
-  queryID: string;                    // parent always supplies
+    /** May be empty when card comes from the résumé matcher */
+  queryID?: string;
   initiallySaved?: boolean;           // ★ NEW
   onToggle?: (id: string, saved: boolean) => void; // ★ NEW
+  onOpen: () => void;
 }
 
 export default function JobCard({
@@ -33,6 +38,7 @@ export default function JobCard({
   queryID,
   initiallySaved = false,
   onToggle,
+  onOpen,
 }: Props) {
   const [saved, setSaved] = useState(initiallySaved);
   const userToken = getUserToken();
@@ -45,8 +51,10 @@ export default function JobCard({
     try {
       await axios.post('/api/favorites', {
         objectID:  job.objectID,
-        queryID,                         // always present
-        position: job.__position ?? 1,
+         ...(queryID  ? { queryID } : {}),
+         ...(job.__position
+            ? { position: job.__position }
+            : {}),
         userToken,
         save: next,
       });
@@ -58,16 +66,22 @@ export default function JobCard({
     }
   }
 
-  /* ---------- click fires Algolia click-event ---------- */
-  function handleCardClick() {
-    aa('clickedObjectIDsAfterSearch', {
-      index: 'jobs',
-      eventName: 'Job clicked',
-      queryID,
-      objectIDs: [job.objectID],
-      positions: [job.__position ?? 1],
-    });
-    // later: open details modal / page
+    /* ---------- main-area click: analytics + open modal ---------- */
+    function handleCardClick(e: MouseEvent) {
+      // ignore clicks on the heart button
+      if ((e.target as HTMLElement).closest('button')) return;
+  
+      if (queryID) {
+        aa('clickedObjectIDsAfterSearch', {
+          index: 'jobs',
+          eventName: 'Job clicked',
+          queryID,
+          objectIDs: [job.objectID],
+          positions: [job.__position ?? 1],
+        });
+      }
+  
+      onOpen();
   }
 
   return (

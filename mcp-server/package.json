@@ -8,14 +8,17 @@
     "test": "vitest",
     "dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "set-index": "ts-node scripts/set_index_settings.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@algolia/client-search": "^5.32.0",
+    "@headlessui/react": "^2.2.4",
     "algoliasearch": "^4.25.2",
+    "commander": "^14.0.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",
     "lowdb": "^1.0.0",
@@ -24,10 +27,11 @@
   },
   "devDependencies": {
     "@faker-js/faker": "^9.9.0",
+    "@types/commander": "^2.12.5",
     "@types/express": "^5.0.3",
     "@types/lowdb": "^1.0.4",
     "@types/node": "^24.0.13",
-    "@vitest/coverage-c8": "^0.33.0",
+    "@vitest/coverage-v8": "^3.2.4",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",

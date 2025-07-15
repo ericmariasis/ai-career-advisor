@@ -2,6 +2,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import type { Job } from './components/JobCard';
+import JobModal from './components/JobModal'; 
 import axios from 'axios';
 import SearchBar  from './components/SearchBar';
 import JobCard    from './components/JobCard';
@@ -25,14 +26,16 @@ export default function Home() {
   const [savedSet, setSaved]  = useState<Set<string>>(new Set());
   const [resumeSkills, setResumeSkills] = useState<string[]>([]);
   const [resumeHits,   setResumeHits]   = useState<Job[]>([]);
+  const [selectedJob,  setSelectedJob]  = useState<Job | null>(null);
+  const [tag, setTag] = useState('');
 
 
   /* ---------------- search helper ---------------- */
-  async function search(q: string, page = 0) {
+  async function search(q: string, page = 0, tag = '') {
     setLoading(true);
     try {
       const { data } = await axios.get<AlgoliaResponse>('/api/search', {
-        params: { q, page, hitsPerPage: 10 },
+        params: { q, page, tag, hitsPerPage: 10},
       });
       setResult(data);
       setQuery(q);
@@ -51,7 +54,23 @@ export default function Home() {
     });
   }
 
-  useEffect(() => { search(''); }, []);
+  async function toggleFavorite(job: Job, save: boolean) {
+    try {
+      await axios.post('/api/favorites', {
+        objectID: job.objectID,
+        // these two are optional when saving from a modal
+        queryID: job.__queryID ?? '',
+        position: job.__position ?? 0,
+        userToken: getUserToken(),
+        save,
+      });
+      handleToggle(job.objectID, save);           // keep global state in sync
+    } catch (err) {
+      console.error('Could not toggle favourite', err);
+    }
+  }
+  
+  useEffect(() => { search('', 0, tag); }, [tag]);
 
     useEffect(() => {
         const fetchSaved = async () => {
@@ -69,9 +88,36 @@ export default function Home() {
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-bold">AI Job Explorer</h1>
+       <header className="flex items-baseline gap-6">
+   <h1 className="text-2xl font-bold">AI Job Explorer</h1>
 
-      <SearchBar onSearch={(term) => search(term, 0)} />
+   {/* Saved-jobs link */}
+   <a
+     href="/saved"
+     className="text-sm text-indigo-400 hover:text-indigo-300 underline"
+   >
+     Saved&nbsp;Jobs
+   </a>
+ </header>
+ <div className="flex items-center gap-2">
+  <label className="text-sm text-gray-400">Filter:</label>
+  <select
+    value={tag}
+    onChange={(e) => {
+      const val = e.target.value;
+      setTag(val);
+      search(query, 0, val);           // reset page when tag changes
+    }}
+    className="rounded bg-zinc-800 px-2 py-1 text-sm"
+  >
+    <option value="">All jobs</option>
+    <option value="remote">Remote</option>
+    <option value="senior">Senior</option>
+    <option value="energy">Energy</option>
+    {/* add more if you have other industries/tags */}
+  </select>
+</div>
+      <SearchBar onSearch={(term) => search(term, 0, tag)} />
 
       {loading && <p>Loading…</p>}
 
@@ -90,6 +136,7 @@ export default function Home() {
                 position={page * 10 + idx + 1}
                 initiallySaved={savedSet.has(job.objectID)}     // ★ NEW
                 onToggle={handleToggle}                         // ★ NEW
+                onOpen={() => setSelectedJob(job)} 
               />
             ))}
           </div>
@@ -98,7 +145,7 @@ export default function Home() {
             <Pagination
               page={page}
               nbPages={result.nbPages}
-              onPage={(p) => search(query, p)}
+              onPage={(p) => search(query, p, tag)}
             />
           )}
         </>
@@ -133,7 +180,12 @@ export default function Home() {
     </div>
   </>
 )}
-
+<JobModal
+  job={selectedJob}
+  saved={selectedJob ? savedSet.has(selectedJob.objectID) : false}
+  onClose={() => setSelectedJob(null)}
+  onToggleSave={toggleFavorite}
+/>
     </main>
   );
 }

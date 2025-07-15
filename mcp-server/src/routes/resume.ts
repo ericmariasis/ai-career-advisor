@@ -79,4 +79,38 @@ res.json({ skills, hits });
   }
 });
 
+router.post('/feedback', async (req, res) => {
+    const { resumeText } = req.body;
+    if (!resumeText) {
+      return res.status(400).json({ error: 'Missing resumeText' });
+    }
+  
+    try {
+      const system = `You are an expert career coach. Given a candidate's résumé text and a set of 
+  job requirements, identify 3–5 key skills the candidate lacks that are highly relevant for data 
+  science roles. Then recommend concrete learning resources or next steps for each missing skill. 
+  Be concise.`;
+      const user = `Résumé:\n${resumeText}\n\nExample requirements:
+  • Proficiency in Python, SQL, machine learning frameworks
+  • Experience with cloud platforms (AWS/Azure/GCP)
+  • Strong data visualization and communication skills`;
+  
+      const completion = await openai.chat.completions.create({
+        model: OPENAI_MODEL,
+        temperature: 0,
+        max_tokens: 300,
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user',   content: user   },
+        ],
+      });
+  
+      const feedback = completion.choices[0].message?.content?.trim() || '';
+      return res.json({ feedback });
+    } catch (err) {
+      console.error('Résumé feedback error', err);
+      return res.status(500).json({ error: 'Failed to generate résumé feedback' });
+    }
+  });
+
 export default router;

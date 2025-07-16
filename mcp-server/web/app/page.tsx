@@ -33,7 +33,10 @@ export default function Home() {
   const [resumeSkills, setResumeSkills] = useState<string[]>([]);
   const [resumeHits,   setResumeHits]   = useState<Job[]>([]);
   const [selectedJob,  setSelectedJob]  = useState<Job | null>(null);
-  const [tag, setTag] = useState('');
+    const [tag, setTag] = useState('');
+  // ★ NEW: salary range state
+  const [salaryMin, setSalaryMin] = useState('');
+  const [salaryMax, setSalaryMax] = useState('');
 
 
   /* ---------------- search helper ---------------- */
@@ -41,18 +44,28 @@ export default function Home() {
         q: string,
         page = 0,
         tag = '',
+        salaryMin = '',
+        salaryMax = ''
       ) {
     setLoading(true);
     try {
             // build an array of facetFilters for location, industry, and your existing tag
       const ff: string[] = [];
-      selectedLocations.forEach(loc => ff.push(`location:"${loc}"`));
-      selectedIndustries.forEach(ind => ff.push(`industry:"${ind}"`));
-      if (tag) ff.push(`tags:"${tag}"`);
+      selectedLocations.forEach(loc => ff.push(`location:${loc}`));
+      selectedIndustries.forEach(ind => ff.push(`industry:${ind}`));
+      if (tag) ff.push(`tags:${tag}`);
 
-      const { data } = await axios.get<AlgoliaResponse>('/api/search', {
-        params: { q, page, tag, hitsPerPage: 10, facetFilters: ff },
-      });
+            const { data } = await axios.get<AlgoliaResponse>('/api/search', {
+                params: {
+                  q,
+                  page,
+                  tag,
+                  hitsPerPage: 10,
+                  facetFilters: ff,
+                  salaryMin,
+                  salaryMax,
+                },
+              });
       setResult(data);
       setQuery(q);
       setPage(page);
@@ -86,7 +99,15 @@ export default function Home() {
     }
   }
   
-  useEffect(() => { search('', 0, tag); }, [tag]);
+      // whenever tag or salary range change, reset to page 0
+      useEffect(() => {
+        search('', 0, tag, salaryMin, salaryMax);
+      }, [tag, salaryMin, salaryMax]);
+  
+      // ★ NEW: whenever the facet-sets change, re-run the search
+      useEffect(() => {
+        search(query, 0, tag, salaryMin, salaryMax);
+      }, [selectedLocations, selectedIndustries]);
 
     useEffect(() => {
         const fetchSaved = async () => {
@@ -116,19 +137,19 @@ export default function Home() {
               .slice(0, showAllLoc ? undefined : 10)
               .map(([loc, count]) => (
                 <label key={loc} className="block text-sm">
-                  <input
-                    type="checkbox"
-                    className="mr-1"
-                    checked={selectedLocations.has(loc)}
-                    onChange={e => {
-                      const next = new Set(selectedLocations);
-                      e.target.checked ? next.add(loc) : next.delete(loc);
-                      setSelectedLocations(next);
-                      search(query, 0, tag);
-                    }}
-                  />
-                  {loc} <span className="text-gray-500">({count})</span>
-                </label>
+               <input
+                 type="checkbox"
+                 className="mr-1"
+                 checked={selectedLocations.has(loc)}
+                 onChange={e => {
+                   const next = new Set(selectedLocations);
+                   e.target.checked ? next.add(loc) : next.delete(loc);
+                   setSelectedLocations(next);
+                   // …
+                 }}
+               />
+               {loc} <span className="text-gray-500">({count})</span>
+             </label>
               ))}
             {Object.keys(result.facets.location ?? {}).length > 10 && (
               <button
@@ -148,19 +169,18 @@ export default function Home() {
               .slice(0, showAllInd ? undefined : 10)
               .map(([ind, count]) => (
                 <label key={ind} className="block text-sm">
-                  <input
-                    type="checkbox"
-                    className="mr-1"
-                    checked={selectedIndustries.has(ind)}
-                    onChange={e => {
-                      const next = new Set(selectedIndustries);
-                      e.target.checked ? next.add(ind) : next.delete(ind);
-                      setSelectedIndustries(next);
-                      search(query, 0, tag);
-                    }}
-                  />
-                  {ind} <span className="text-gray-500">({count})</span>
-                </label>
+ <input
+   type="checkbox"
+   className="mr-1"
+   checked={selectedIndustries.has(ind)}
+   onChange={e => {
+     const next = new Set(selectedIndustries);
+     e.target.checked ? next.add(ind) : next.delete(ind);
+     setSelectedIndustries(next);
+   }}
+ />
+               {ind} <span className="text-gray-500">({count})</span>
+             </label>
               ))}
             {Object.keys(result.facets.industry ?? {}).length > 10 && (
               <button
@@ -185,15 +205,35 @@ export default function Home() {
      Saved&nbsp;Jobs
    </a>
  </header>
- <div className="flex items-center gap-2">
+       {/* ★ NEW: salary-min / salary-max inputs */}
+      <div className="flex items-center gap-4 mb-4">
+        <label className="text-sm">Salary Min:</label>
+        <input
+          type="number"
+          value={salaryMin}
+          onChange={e => setSalaryMin(e.target.value)}
+          placeholder="0"
+          className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm"
+        />
+        <label className="text-sm">Max:</label>
+        <input
+          type="number"
+          value={salaryMax}
+          onChange={e => setSalaryMax(e.target.value)}
+          placeholder="∞"
+          className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm"
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
   <label className="text-sm text-gray-400">Filter:</label>
   <select
     value={tag}
-    onChange={(e) => {
-      const val = e.target.value;
-      setTag(val);
-      search(query, 0, val);           // reset page when tag changes
-    }}
+            onChange={(e) => {
+                const val = e.target.value;
+                setTag(val);
+                search(query, 0, val, salaryMin, salaryMax);
+              }}
     className="rounded bg-zinc-800 px-2 py-1 text-sm"
   >
     <option value="">All jobs</option>
@@ -203,7 +243,9 @@ export default function Home() {
     {/* add more if you have other industries/tags */}
   </select>
 </div>
-      <SearchBar onSearch={(term) => search(term, 0, tag)} />
+      <SearchBar
+        onSearch={(term) => search(term, 0, tag, salaryMin, salaryMax)}
+      />
 
       {loading && <p>Loading…</p>}
 
@@ -227,11 +269,13 @@ export default function Home() {
             ))}
           </div>
 
-          {result.nbPages > 1 && (
+                    {result.nbPages > 1 && (
             <Pagination
               page={page}
               nbPages={result.nbPages}
-              onPage={(p) => search(query, p, tag)}
+              onPage={(p) =>
+                search(query, p, tag, salaryMin, salaryMax)
+              }
             />
           )}
         </>

@@ -31,16 +31,20 @@ router.get('/job/:id', async (req: Request, res: Response) => {
   
 
 router.get('/', async (req: Request, res: Response) => {
-        const {
-              q = '',
-              page = '0',
-              hitsPerPage = '20',
-              tag = '',
-            } = req.query as Record<string, string>;
+            const {
+                  q = '',
+                  page = '0',
+                  hitsPerPage = '20',
+                  tag = '',
+                  salaryMin = '',
+                  salaryMax = '',
+                } = req.query as Record<string, string>;
         
-            // ─── collect any facetFilters from the query (could be string or string[])
-                // collect any facetFilters from the query (could be string | string[])
-                const rawFF = req.query.facetFilters;
+  const rawFF =
+    // try plain
+    req.query.facetFilters
+    // or fallback to bracketed name
+    ?? (req.query as any)['facetFilters[]'];
                 let facetFilters: string[] | undefined;
                 if (rawFF !== undefined) {
                   if (Array.isArray(rawFF)) {
@@ -54,6 +58,16 @@ router.get('/', async (req: Request, res: Response) => {
               const tf = `tags:"${tag}"`;
               facetFilters = facetFilters ? [...facetFilters, tf] : [tf];
             }
+
+            
+        // ─── build numericFilters from salaryMin / salaryMax ───
+        const numericFilters: string[] = [];
+        if (salaryMin && !isNaN(Number(salaryMin))) {
+          numericFilters.push(`salary_estimate>=${Number(salaryMin)}`);
+        }
+        if (salaryMax && !isNaN(Number(salaryMax))) {
+          numericFilters.push(`salary_estimate<=${Number(salaryMax)}`);
+        }
   
     // ─────────────────────────────────────────────────────────
     // 1 ️⃣  Validate & coerce params
@@ -76,16 +90,37 @@ router.get('/', async (req: Request, res: Response) => {
     );
   
     try {
-                const algoliaResponse = await jobsIndex.search(q, {
-                      page:           pageNum,
-                      hitsPerPage:    hitsPerPageNum,
-                      clickAnalytics: true,
-                      analyticsTags:  ['ai-career-advisor'],
-                      // ─── NEW: request these facet counts ───
-                      facets:         ['location','industry','tags'],
-                      // ─── NEW: apply any facet filters ───
-                      facetFilters,
-                    });
+        console.log('❯ req.query:', req.query);
+console.log('❯ facetFilters (parsed):', facetFilters);
+
+   // ─── group same-facet filters for OR ───────────────────────────────
+   const flatFF = facetFilters ?? [];
+   const industryFF = flatFF.filter(f => f.startsWith('industry:'));
+   const locationFF = flatFF.filter(f => f.startsWith('location:'));
+   const othersFF   = flatFF.filter(
+     f => !f.startsWith('industry:') && !f.startsWith('location:')
+   );
+
+   // build nested facetFilters
+   const nestedFF: (string|string[])[] = [];
+   if (industryFF.length) nestedFF.push(industryFF);
+   if (locationFF.length) nestedFF.push(locationFF);
+   nestedFF.push(...othersFF);
+
+   const searchOptions: any = {
+     page:           pageNum,
+     hitsPerPage:    hitsPerPageNum,
+     clickAnalytics: true,
+     analyticsTags:  ['ai-career-advisor'],
+     facets:         ['location','industry','tags'],
+     facetFilters:   nestedFF.length ? nestedFF : undefined,
+   };
+   if (numericFilters.length) {
+     searchOptions.numericFilters = numericFilters;
+   }
+                            console.log('❯ searchOptions:', searchOptions);
+            
+                            const algoliaResponse = await jobsIndex.search(q, searchOptions);
   
                           res.json({
                                 queryID: algoliaResponse.queryID,

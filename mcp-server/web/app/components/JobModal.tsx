@@ -1,6 +1,8 @@
 'use client';
 
-import { Fragment, useEffect } from 'react';
+import { Fragment, useEffect, useState } from 'react';
+import axios from 'axios';
+import JobCard from './JobCard';
 import { Dialog, Transition } from '@headlessui/react';
 import aa, { getUserToken } from '../insightsClient';
 import type { Job } from '@/types';
@@ -15,6 +17,7 @@ interface Props {
 }
 
 export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
+    const [similar, setSimilar] = useState<Job[]>([]);
   // fire Algolia “view” event
   useEffect(() => {
     if (!job) return;
@@ -24,6 +27,25 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
       objectIDs: [job.objectID],
       userToken: getUserToken(),
     });
+  }, [job]);
+
+  
+  // ★ NEW: fetch “similar” jobs whenever this modal opens
+  useEffect(() => {
+    if (!job) {
+      setSimilar([]);
+      return;
+    }
+    (async () => {
+      try {
+        const { data } = await axios.get<Job[]>(
+          `/api/recommend/job/${job.objectID}`
+        );
+        setSimilar(data);
+      } catch (err) {
+        console.error('Failed to load similar jobs', err);
+      }
+    })();
   }, [job]);
 
   if (!job) return null;
@@ -111,6 +133,26 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
                 >
                   Apply on company site →
                 </a>
+              )}
+              
+              {/* ★ NEW: “You might also like” */}
+              {similar.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-lg font-medium">You might also like</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                    {similar.map((s) => (
+                      <JobCard
+                        key={s.objectID}
+                        job={s}
+                        queryID=""            // not from a search
+                        position={0}          // no ranking position here
+                        initiallySaved={false}
+                        onToggle={() => {}}
+                        onOpen={() => {}}
+                      />
+                    ))}
+                  </div>
+                </div>
               )}
             </Dialog.Panel>
           </Transition.Child>

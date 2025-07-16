@@ -16,6 +16,7 @@
   "license": "ISC",
   "dependencies": {
     "@algolia/client-search": "^5.32.0",
+    "@algolia/recommend": "^5.33.0",
     "@headlessui/react": "^2.2.4",
     "algoliasearch": "^4.25.2",
     "commander": "^14.0.0",

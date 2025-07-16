@@ -3,6 +3,7 @@ import dotenv  from 'dotenv';
 import searchRouter from './routes/search';
 import favoritesRouter  from './routes/favorites';
 import resumeRouter from './routes/resume';
+import recommendRouter from './routes/recommend';
 import { jobsIndex } from './algolia'; // still used by /recommend
 
 dotenv.config();
@@ -20,6 +21,8 @@ app.use('/api/favorites',  favoritesRouter);  // ← NEW
 
 /* ---------------- Resume -------------- */
 app.use('/api/resume',  resumeRouter);  // ← NEW
+
+app.use('/api/recommend', recommendRouter);
 
 /* ------------------------------------------------------------- */
 /*  (Optional) quick “top-5” recommender                         */

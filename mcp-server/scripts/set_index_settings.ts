@@ -43,11 +43,11 @@ const index  = client.initIndex(ALGOLIA_INDEX);
         'description',
       ],
       // allow filtering on these facets
-      attributesForFaceting: [
-        'filterOnly(tags)',
-        'filterOnly(location)',
-        'filterOnly(industry)',
-      ],
+            attributesForFaceting: [
+                'tags',
+                'location',
+                'industry',
+              ],
       // tie‐breakers when records have equal textual match
       customRanking: [
         'desc(salary_estimate)',  // higher salary first

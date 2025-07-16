@@ -31,12 +31,29 @@ router.get('/job/:id', async (req: Request, res: Response) => {
   
 
 router.get('/', async (req: Request, res: Response) => {
-    const {
-      q = '',
-      page = '0',
-      hitsPerPage = '20',
-      tag = ''
-    } = req.query as Record<string, string>;
+        const {
+              q = '',
+              page = '0',
+              hitsPerPage = '20',
+              tag = '',
+            } = req.query as Record<string, string>;
+        
+            // ─── collect any facetFilters from the query (could be string or string[])
+                // collect any facetFilters from the query (could be string | string[])
+                const rawFF = req.query.facetFilters;
+                let facetFilters: string[] | undefined;
+                if (rawFF !== undefined) {
+                  if (Array.isArray(rawFF)) {
+                    facetFilters = rawFF.map((v) => String(v));
+                  } else {
+                    facetFilters = [String(rawFF)];
+                  }
+                }
+            // if the user passed a `tag`, also treat it as a facetFilter on "tags"
+            if (tag) {
+              const tf = `tags:"${tag}"`;
+              facetFilters = facetFilters ? [...facetFilters, tf] : [tf];
+            }
   
     // ─────────────────────────────────────────────────────────
     // 1 ️⃣  Validate & coerce params
@@ -59,28 +76,26 @@ router.get('/', async (req: Request, res: Response) => {
     );
   
     try {
-        const options: any = {
-            page: pageNum,
-            hitsPerPage: hitsPerPageNum,
-            clickAnalytics: true,
-            analyticsTags: ['ai-career-advisor'],
-          };
-        
-          // if a tag filter was passed, apply it
-          if (tag) {
-            options.filters = `tags:"${tag}"`;
-          }
-        
-          // perform the search with filters
-          const algoliaResponse = await jobsIndex.search(q, options);
+                const algoliaResponse = await jobsIndex.search(q, {
+                      page:           pageNum,
+                      hitsPerPage:    hitsPerPageNum,
+                      clickAnalytics: true,
+                      analyticsTags:  ['ai-career-advisor'],
+                      // ─── NEW: request these facet counts ───
+                      facets:         ['location','industry','tags'],
+                      // ─── NEW: apply any facet filters ───
+                      facetFilters,
+                    });
   
-      res.json({
-        queryID: algoliaResponse.queryID,
-        nbHits:  algoliaResponse.nbHits,
-        page:    algoliaResponse.page,
-        nbPages: algoliaResponse.nbPages,
-        hits:    algoliaResponse.hits,
-      });
+                          res.json({
+                                queryID: algoliaResponse.queryID,
+                                nbHits:  algoliaResponse.nbHits,
+                                page:    algoliaResponse.page,
+                                nbPages: algoliaResponse.nbPages,
+                                hits:    algoliaResponse.hits,
+                                // ─── NEW: pass back the facet counts to the client ───
+                                facets:  algoliaResponse.facets,
+                              });
     } catch (err) {
       console.error(err);
       res.status(500).json({ error: 'Search failed' });

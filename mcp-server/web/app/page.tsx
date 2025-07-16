@@ -16,9 +16,15 @@ type AlgoliaResponse = {
   page: number;
   nbPages: number;
   queryID: string;
+  facets?: { [facetName: string]: Record<string, number> };
 };
 
 export default function Home() {
+    const [selectedLocations,  setSelectedLocations]  = useState<Set<string>>(new Set());
+    const [selectedIndustries, setSelectedIndustries] = useState<Set<string>>(new Set());
+    // ★ NEW: control expand/collapse of long facet lists
+    const [showAllLoc, setShowAllLoc] = useState(false);
+    const [showAllInd, setShowAllInd] = useState(false);
   const [query, setQuery]     = useState('');
   const [page,  setPage]      = useState(0);
   const [result, setResult]   = useState<AlgoliaResponse | null>(null);
@@ -31,11 +37,21 @@ export default function Home() {
 
 
   /* ---------------- search helper ---------------- */
-  async function search(q: string, page = 0, tag = '') {
+    async function search(
+        q: string,
+        page = 0,
+        tag = '',
+      ) {
     setLoading(true);
     try {
+            // build an array of facetFilters for location, industry, and your existing tag
+      const ff: string[] = [];
+      selectedLocations.forEach(loc => ff.push(`location:"${loc}"`));
+      selectedIndustries.forEach(ind => ff.push(`industry:"${ind}"`));
+      if (tag) ff.push(`tags:"${tag}"`);
+
       const { data } = await axios.get<AlgoliaResponse>('/api/search', {
-        params: { q, page, tag, hitsPerPage: 10},
+        params: { q, page, tag, hitsPerPage: 10, facetFilters: ff },
       });
       setResult(data);
       setQuery(q);
@@ -88,6 +104,76 @@ export default function Home() {
 
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
+      {/* ★ NEW: Facet panels */}
+      {result?.facets && (
+        <div className="flex gap-8 mb-4">
+
+          {/* Location facet */}
+          <div className="w-1/2">
+            <h4 className="font-semibold">Location</h4>
+            {Object.entries(result.facets.location ?? {})
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, showAllLoc ? undefined : 10)
+              .map(([loc, count]) => (
+                <label key={loc} className="block text-sm">
+                  <input
+                    type="checkbox"
+                    className="mr-1"
+                    checked={selectedLocations.has(loc)}
+                    onChange={e => {
+                      const next = new Set(selectedLocations);
+                      e.target.checked ? next.add(loc) : next.delete(loc);
+                      setSelectedLocations(next);
+                      search(query, 0, tag);
+                    }}
+                  />
+                  {loc} <span className="text-gray-500">({count})</span>
+                </label>
+              ))}
+            {Object.keys(result.facets.location ?? {}).length > 10 && (
+              <button
+                className="mt-1 text-xs text-indigo-400 underline"
+                onClick={() => setShowAllLoc(x => !x)}
+              >
+                {showAllLoc ? 'Show less…' : 'Show more…'}
+              </button>
+            )}
+          </div>
+
+          {/* Industry facet */}
+          <div className="w-1/2">
+            <h4 className="font-semibold">Industry</h4>
+            {Object.entries(result.facets.industry ?? {})
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, showAllInd ? undefined : 10)
+              .map(([ind, count]) => (
+                <label key={ind} className="block text-sm">
+                  <input
+                    type="checkbox"
+                    className="mr-1"
+                    checked={selectedIndustries.has(ind)}
+                    onChange={e => {
+                      const next = new Set(selectedIndustries);
+                      e.target.checked ? next.add(ind) : next.delete(ind);
+                      setSelectedIndustries(next);
+                      search(query, 0, tag);
+                    }}
+                  />
+                  {ind} <span className="text-gray-500">({count})</span>
+                </label>
+              ))}
+            {Object.keys(result.facets.industry ?? {}).length > 10 && (
+              <button
+                className="mt-1 text-xs text-indigo-400 underline"
+                onClick={() => setShowAllInd(x => !x)}
+              >
+                {showAllInd ? 'Show less…' : 'Show more…'}
+              </button>
+            )}
+          </div>
+
+        </div>
+      )}
        <header className="flex items-baseline gap-6">
    <h1 className="text-2xl font-bold">AI Job Explorer</h1>
 

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { extractSkills } from '../utils/extractSkills';
-import { jobsIndex }     from '../algolia';
+import { jobsIndex } from '../lib/algolia';
 import { openai, OPENAI_MODEL } from '../openai';   // ← NEW
 
 const router = Router();

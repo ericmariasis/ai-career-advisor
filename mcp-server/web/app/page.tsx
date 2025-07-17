@@ -245,6 +245,12 @@ export default function Home() {
 </div>
       <SearchBar
         onSearch={(term) => search(term, 0, tag, salaryMin, salaryMax)}
+         onSelectHit={(hit) => {
+              // hit already contains all attributes you need
+              setSelectedJob(hit);
+              // ensure it's marked as saved or not:
+              handleToggle(hit.objectID, savedSet.has(hit.objectID));
+            }}
       />
 
       {loading && <p>Loading…</p>}

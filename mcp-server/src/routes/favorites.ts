@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import aa from '../insightsServer'
-import { jobsIndex }      from '../algolia'
+import { jobsIndex }      from '../lib//algolia'
 import { toggleFavorite, getFavorites } from '../lib/store'   // ← add loadDB
 
 const router = Router()

@@ -4,7 +4,7 @@ import searchRouter from './routes/search';
 import favoritesRouter  from './routes/favorites';
 import resumeRouter from './routes/resume';
 import recommendRouter from './routes/recommend';
-import { jobsIndex } from './algolia'; // still used by /recommend
+import { jobsIndex } from './lib/algolia'; // still used by /recommend
 
 dotenv.config();
 

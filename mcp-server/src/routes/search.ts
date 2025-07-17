@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { jobsIndex } from '../algolia';
+import { jobsIndex } from '../lib/algolia';
 import type { Job } from '../types'; 
 
 const router = Router();

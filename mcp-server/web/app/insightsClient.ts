@@ -5,7 +5,7 @@ import aa from 'search-insights';
 if (!(globalThis as any)._algoliaInsightsInit) {
   aa('init', {
     appId:  process.env.NEXT_PUBLIC_ALGOLIA_APP_ID!,
-    apiKey: process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_KEY!,   // search-only key
+    apiKey: process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY!,   // search-only key
     useCookie: true,      // lets Algolia set an anonymous userToken cookie
   });
   (globalThis as any)._algoliaInsightsInit = true;

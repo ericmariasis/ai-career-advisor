@@ -122,7 +122,13 @@ export default function Home() {
         };
         fetchSaved();
       }, []);
-
+      function clearSearch() {
+        setQuery('');
+        setTag('');
+        setPage(0);
+        // salaryMin / salaryMax stay as-is so the user’s filters persist
+        search('', 0, '', salaryMin, salaryMax);
+      }
   return (
     <main className="max-w-4xl mx-auto p-6 space-y-6">
       {/* ★ NEW: Facet panels */}
@@ -251,6 +257,7 @@ export default function Home() {
               // ensure it's marked as saved or not:
               handleToggle(hit.objectID, savedSet.has(hit.objectID));
             }}
+            onClear={clearSearch}
       />
 
       {loading && <p>Loading…</p>}

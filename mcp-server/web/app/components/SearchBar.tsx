@@ -1,7 +1,8 @@
 // components/SearchBar.tsx
 'use client';
 
-import React, { useEffect, useRef, createElement, Fragment } from 'react';
+import React, { useEffect, useRef, useState,        
+               createElement, Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
 import { autocomplete, getAlgoliaResults } from '@algolia/autocomplete-js';
 import '@algolia/autocomplete-theme-classic';
@@ -12,12 +13,20 @@ import { Job } from './JobCard';
 interface SearchBarProps {
   onSearch: (query: string) => void;
   onSelectHit?: (hit: Job) => void;
+  onClear?: () => void;
 }
 
-export default function SearchBar({ onSearch, onSelectHit }: SearchBarProps) {
+export default function SearchBar({              
+    onSearch,
+    onSelectHit,
+    onClear,
+  }: SearchBarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const inputRef     = useRef<HTMLInputElement | null>(null);   // 🆕 native <input>
+  const panelRef     = useRef<ReturnType<typeof autocomplete>>(); // 🆕 store panel
   // ▼▼▼ ADD A REF TO HOLD THE REACT ROOT FOR THE PANEL ▼▼▼
   const panelRootRef = useRef<any>(null);
+  const [query, setQuery] = useState(''); 
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -43,6 +52,10 @@ export default function SearchBar({ onSearch, onSelectHit }: SearchBarProps) {
           panelRootRef.current = createRoot(root);
         }
         panelRootRef.current.render(children);
+      },
+            /* fire parent reset when we clear */
+      onReset() {
+        onClear?.();                               // ➕ notify page
       },
       getSources() {
         return [
@@ -86,11 +99,37 @@ export default function SearchBar({ onSearch, onSelectHit }: SearchBarProps) {
       },
     });
 
-    return () => {
-      panel.destroy();
-      queueMicrotask(() => (panelRootRef.current = null));
-    };
-  }, [onSearch]);
+        // keep a handle so the clear‑button can call panelRef.current.reset()
+        panelRef.current = panel;               // ➕ store reference
+    
+        return () => {
+          panel.destroy();
+          queueMicrotask(() => (panelRootRef.current = null));
+          panelRef.current = undefined;         // ➕ clear ref on unmount
+        };
+      /**
+       * ‼️  Important: this effect should run only once (mount / unmount).
+       *      If it re‑runs on every re‑render, Autocomplete mounts a
+       *      second React root on the same DOM node → the warning you saw.
+       */
+      }, []);                                   // ✏️ was  [onSearch]
 
-  return <div ref={containerRef} className="w-full" />;
+    /* ------- CLEAR-BUTTON UI -------- */
+  return (
+    <div className="relative">
+      <div ref={containerRef} className="w-full" />
+      {query && (
+        <button
+          aria-label="Clear search"
+          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+          onClick={() => {
+            panelRef.current?.setQuery('');  // wipe store
+            panelRef.current?.reset();       // triggers onReset
+          }}
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
 }

@@ -13,6 +13,10 @@
 // ------------------------------------------------------------
 
 import 'dotenv/config';
+
+const DRY_RUN = process.argv.includes('--dry-run');
+if (DRY_RUN) console.log('🛈  DRY‑RUN: no OpenAI calls, no Algolia writes\n');
+
 import algoliasearch, { SearchClient } from 'algoliasearch';
 import { OpenAI } from 'openai';
 import pLimit from 'p-limit';
@@ -42,11 +46,12 @@ const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // ---------- 3. Schema for LLM output ----------------------------------------
 const Enriched = z.object({
-  objectID     : z.string(),
-  industry_ai  : z.string().optional(),
-  skills_ai    : z.array(z.string()).min(1),
-  seniority_ai : z.enum(['junior', 'mid', 'senior']),
-});
+    objectID     : z.string(),
+    industry_ai  : z.string().optional(),
+    skills_ai    : z.array(z.string()).min(1),
+    seniority_ai : z.enum(['junior', 'mid', 'senior']),
+    lastEnrichedAt: z.number().optional(),   // 🆕 allow it
+  });
 type Enriched = z.infer<typeof Enriched>;
 
 // ---------- 4. Helpers -------------------------------------------------------
@@ -60,26 +65,34 @@ function estimateCost(prompt: string, n = 1) {
   return (tokens * 0.01) / 1000 * n;
 }
 
-/** Build a single system/user message for N jobs */
 function buildPrompt(jobs: any[]): string {
-  return `
-You are a data–enrichment worker. For each job JSON, output a new JSON object
-with these keys:
-
-• "objectID"        – copy from input
-• "industry_ai"     – short industry label (example: "IT Services")
-• "skills_ai"       – 5–10 key skills from description (array of strings)
-• "seniority_ai"    – "junior", "mid", or "senior"
-
-Return an array in **valid minified JSON** ONLY.
-
-Input:
-${JSON.stringify(jobs, null, 0)}
-`.trim();
-}
-
+    return `
+  You are a data‑enrichment worker. For each job JSON, output **ONLY** an array
+  in minified JSON. **Do NOT wrap the answer in back‑ticks or any markdown.**
+  
+  Schema per item:
+    objectID        – string (copy from input)
+    industry_ai     – short label
+    skills_ai       – 5‑10 skill strings
+    seniority_ai    – "junior" | "mid" | "senior"
+  
+  Input:
+  ${JSON.stringify(jobs)}
+  `.trim();
+  }
+  
 /** Enrich 1 batch (<=50) and return successful objects */
 async function enrichBatch(batch: any[]) {
+
+    if (DRY_RUN) {
+        return batch.map((j) => ({
+          objectID      : j.objectID,
+          industry_ai   : 'TBD',
+          skills_ai     : [],
+          seniority_ai  : 'mid',
+          lastEnrichedAt: Date.now(),
+        })) satisfies Enriched[];
+      }
   const prompt = buildPrompt(batch);
   const est    = estimateCost(prompt);
 
@@ -97,12 +110,13 @@ async function enrichBatch(batch: any[]) {
   spent += est;
 
   const raw = res.choices[0].message.content ?? '[]';
+  const sanitized = raw.replace(/```[a-z]*\s*|```/gi, '');
   let parsed: unknown;
 
   try {
-    parsed = JSON.parse(raw);
+    parsed = JSON.parse(sanitized);
   } catch (e) {
-    throw new Error(`JSON.parse failed: ${(e as Error).message}`);
+    throw new Error(`JSON.parse failed: ${(e as Error).message}\n---\n${sanitized}`);
   }
 
   const objects: Enriched[] = Enriched.array().parse(parsed);
@@ -119,15 +133,17 @@ async function main() {
   // ① Collect stale objects
   await index.browseObjects({
     batch: objects => {
-      objects.forEach(obj => {
-        if (!obj.skills_ai || (obj.lastEnrichedAt ?? 0) < yesterday) {
-          toEnrich.push({
-            objectID   : obj.objectID,
-            title      : obj.title,
-            description: obj.description,
+        objects.forEach(obj => {
+            const rec = obj as any;                      // 👈 cast
+            if (!rec.skills_ai || (rec.lastEnrichedAt ?? 0) < yesterday) {
+              toEnrich.push({
+                objectID   : rec.objectID,
+                title      : rec.title,
+                description: rec.description,
+              });
+            }
           });
-        }
-      });
+          
     },
     query: '',
     filters: '',     // you can add custom filters if needed
@@ -165,15 +181,18 @@ async function main() {
   );
 
   // ③ Push updates / errors
-  if (updates.length) {
+  if (!DRY_RUN && updates.length) {
     await index.partialUpdateObjects(updates, { createIfNotExists: false });
   }
-  if (errors.length) {
+  if (!DRY_RUN && errors.length) {
     await errIdx.saveObjects(errors, { autoGenerateObjectIDIfNotExist: true });
   }
 
   console.timeEnd('⏱  enrich');
-  console.log(`✅ ${updates.length} updated  | ❌ ${errors.length} errors | $${spent.toFixed(2)}`);
+  console.log(
+    `${DRY_RUN ? '[DRY] ' : ''}✅ ${updates.length} updated  | ❌ ${errors.length
+    } errors | $${spent.toFixed(2)}`,
+  );
 }
 
 main().catch(e => {

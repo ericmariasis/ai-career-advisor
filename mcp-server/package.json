@@ -19,7 +19,7 @@
     "@algolia/client-search": "^5.33.0",
     "@algolia/recommend": "^5.33.0",
     "@headlessui/react": "^2.2.4",
-    "algoliasearch": "^4.25.2",
+    "algoliasearch": "4.25.2",
     "commander": "^14.0.0",
     "dotenv": "^17.2.0",
     "express": "^5.1.0",

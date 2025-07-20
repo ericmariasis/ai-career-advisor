@@ -10,3 +10,10 @@ export interface Job {
     applyUrl?: string;
   }
   
+  /** Algolia “hit” structure – a Job plus any extra Algolia metadata. */
+export interface JobHit extends Job {
+  lastEnrichedAt?: number;          // timestamp the prune script sorts on
+  objectID: string;                 // always present in Algolia hits
+  /** Accept any additional fields Algolia injects */
+  [key: string]: any;
+}

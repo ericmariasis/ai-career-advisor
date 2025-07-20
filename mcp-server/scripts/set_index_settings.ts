@@ -10,7 +10,7 @@
  *   ALGOLIA_ADMIN_KEY
  *   ALGOLIA_INDEX     (optional; defaults to "jobs")
  */
-import algoliasearch from 'algoliasearch';
+import algoliasearch = require('algoliasearch');
 import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env' });
 

@@ -1,31 +1,38 @@
 name: Crawl + Prune Algolia
 
 on:
-  push:              # every push to main
-    branches: [ main ]
-  schedule:          # every night at 04:15 UTC
-    - cron:  '15 4 * * *'
-  workflow_dispatch: # manual Run workflow button
+  push:
+    branches: [main]         # every commit on main
+  schedule:
+    - cron:  '15 4 * * *'    # nightly 04:15 UTC
+  workflow_dispatch:         # manual “Run workflow” button
 
 jobs:
   prune:
     runs-on: ubuntu-latest
 
-    env:            # available to **all** steps
+    # Make every step start in mcp-server/ by default ↓↓↓
+    defaults:
+      run:
+        working-directory: mcp-server
+
+    env:
       ALGOLIA_APP_ID:  ${{ secrets.ALGOLIA_APP_ID }}
       ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Node & deps
+      - name: Set up Node 20 + restore npm cache
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
+          # point cache at the *right* lock‑file
+          cache-dependency-path: mcp-server/package-lock.json
 
-      - run: npm ci            # install from package‑lock
+      - name: Install dependencies (npm ci)
+        run: npm ci
 
-      # ---------- YOUR SCRIPT ---------------
-      - name: Prune to newest 1000
-        run: npx ts-node mcp-server/scripts/prune_latest.ts 1000
+      - name: Prune to newest 1 000
+        run: npx ts-node scripts/prune_latest.ts 1000

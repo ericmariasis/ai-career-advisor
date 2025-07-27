@@ -24,10 +24,7 @@ app.use('/api/resume',  resumeRouter);  // ← NEW
 
 app.use('/api/recommend', recommendRouter);
 
-/* ------------------------------------------------------------- */
-/*  (Optional) quick “top-5” recommender                         */
-/* ------------------------------------------------------------- */
-app.post('/recommend', async (_req, res) => {
+app.post('/api/recommend/top5', async (_req, res) => {
   const { hits } = await jobsIndex.search('', { hitsPerPage: 5 });
   res.json(hits);
 });

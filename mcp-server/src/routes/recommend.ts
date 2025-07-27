@@ -44,11 +44,10 @@ router.get('/job/:id', async (req: Request, res: Response) => {
   if (!job) {
     return res.status(404).json({ error: 'job not found' });
   }
-  if (!Array.isArray(job.embedding) || !job.embedding.length) {
-    return res
-      .status(400)
-      .json({ error: 'job has no embedding; enrich job first' });
-  }
+   if (!Array.isArray(job.embedding) || !job.embedding.length) {
+       // no vector yet – let the UI show the job details but no recs
+       return res.json({ objectID: job.objectID, recommendations: [] });
+     }
 
   /* 2️⃣ nearest‑neighbour search (k = 6 so we can drop self) */
   const hits = (await knnSearch(job.embedding, 6)) as KnnHit[];

@@ -29,6 +29,8 @@ async function main() {
   const headers = { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` };
   const urlUsage = 'https://api.openai.com/dashboard/billing/usage';
 
+  console.log('[quota‑debug]', urlUsage, headers)
+
   const today = new Date().toISOString().slice(0, 10);       // YYYY‑MM‑DD
   const start = today.slice(0, 8) + '01';                    // 1st of month
 
@@ -59,6 +61,7 @@ async function main() {
 }
 
 main().catch((err) => {
+    console.error('OpenAI response', err.response?.data)
   console.error('Quota check failed', err.response?.data ?? err);
   /* Option A: change to “return” so the job continues even if usage fails */
   process.exit(1);

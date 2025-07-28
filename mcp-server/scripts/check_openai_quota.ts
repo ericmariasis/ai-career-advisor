@@ -26,12 +26,8 @@ async function main() {
   }
 
   /* ---------- usage endpoint (still works with API key) ---------- */
-  const headers = {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'OpenAI-Beta': 'usage-1',
-    };
-  const urlUsage =
-    'https://api.openai.com/v1/dashboard/billing/usage';
+  const headers = { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` };
+  const urlUsage = 'https://api.openai.com/dashboard/billing/usage';
 
   const today = new Date().toISOString().slice(0, 10);       // YYYY‑MM‑DD
   const start = today.slice(0, 8) + '01';                    // 1st of month

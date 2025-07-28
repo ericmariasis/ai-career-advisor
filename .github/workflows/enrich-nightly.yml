@@ -2,63 +2,67 @@ name: Nightly Job – Vector Enrich
 
 on:
   schedule:
-    - cron:  '0 4 * * *'       # 04:00 UTC, 15 min before prune
-  workflow_dispatch:
+    - cron: '0 4 * * *'        # 04 :00 UTC every day
+  workflow_dispatch:            # manual “Run workflow” button
 
 jobs:
   enrich:
     runs-on: ubuntu-latest
 
-       # ─────────────────────── Redis side‑car ──────────────────────
+    # ───────────── Side‑car services (same level as defaults / steps) ─────────────
     services:
       redis:
-        image: redis:7                # official image, latest 7.x
+        image: redis:7
         ports:
-          - 6379:6379                 # expose on the runner
-        options: >-                   # optional health‑check
+          - 6379:6379
+        options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-   # ──────────────────────────────────────────────────────────────
-    
-    # All steps start in mcp-server/
+    # ──────────────────────────────────────────────────────────────────────────────
+
+    # all `run:` commands start in mcp-server/
     defaults:
       run:
         working-directory: mcp-server
 
     steps:
-      - uses: actions/checkout@v4
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4       # same as prune.yml
+      - name: 🛠 Setup Node 20 + npm cache
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: mcp-server/package-lock.json
 
-      - name: Install deps
+      - name: 📦 Install deps (npm ci)
         run: npm ci
 
+      # ──────────────── optional debug helpers (remove later) ────────────────
+      - name: 🔎 Dump env secrets that reached the runner
+        run: env | grep -E 'OPENAI|ALGOLIA|REDIS' || true
 
-      - name: Debug ‑ show check_quota script
+      - name: 🔍 Show top of quota script
         run: |
           echo '─── mcp‑server/scripts/check_openai_quota.ts (head) ───'
-          cat scripts/check_openai_quota.ts | head -n 20
+          sed -n '1,40p' scripts/check_openai_quota.ts
           echo '───────────────────────────────────────────────────────'
+      # ───────────────────────────────────────────────────────────────
 
-
-      - name: Check OpenAI quota
+      - name: 🧮 Check OpenAI quota
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ALGOLIA_APP_ID   : ${{ secrets.ALGOLIA_APP_ID }}
-          ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
-          OPENAI_HARD_LIMIT_USD: ${{ secrets.OPENAI_HARD_LIMIT_USD }}
+          OPENAI_API_KEY:         ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_HARD_LIMIT_USD:  ${{ secrets.OPENAI_HARD_LIMIT_USD }}
         run: npx tsx scripts/check_openai_quota.ts
 
-      - name: Run nightly embedding job
+      - name: 🚀 Run nightly embedding job
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          ALGOLIA_APP_ID   : ${{ secrets.ALGOLIA_APP_ID }}
-          ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
-          OPENAI_HARD_LIMIT_USD: ${{ secrets.OPENAI_HARD_LIMIT_USD }}
+          OPENAI_API_KEY:         ${{ secrets.OPENAI_API_KEY }}
+          ALGOLIA_APP_ID:         ${{ secrets.ALGOLIA_APP_ID }}
+          ALGOLIA_ADMIN_KEY:      ${{ secrets.ALGOLIA_ADMIN_KEY }}
+          OPENAI_HARD_LIMIT_USD:  ${{ secrets.OPENAI_HARD_LIMIT_USD }}
+          REDIS_URL:              redis://localhost:6379
         run: npx tsx scripts/enrich_jobs.ts

@@ -12,13 +12,12 @@ async function main() {
 
   // -------- correct headers (no Beta flag) ----------
   const headers = {
-    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-    'OpenAI-Beta': 'usage-1',
-  };
-
-  // -------- correct endpoints (NO “v1”) -------------
-  const urlUsage  = 'https://api.openai.com/dashboard/billing/usage';
-  const urlGrants = 'https://api.openai.com/dashboard/billing/credit_grants';
+      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+      'OpenAI-Beta': 'usage-1',        // REQUIRED for the v1 billing endpoints
+    };
+    
+    const urlUsage  = 'https://api.openai.com/v1/dashboard/billing/usage';
+    const urlGrants = 'https://api.openai.com/v1/dashboard/billing/credit_grants';
 
   // current billing cycle (UTC)
   const today = new Date().toISOString().slice(0, 10);   // YYYY‑MM‑DD

@@ -9,7 +9,11 @@ import { jobsIndex } from './lib/algolia'; // still used by /recommend
 dotenv.config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));   // plenty for a 7 000‑token résumé
+app.use(express.text({ limit: '10mb', type: 'text/plain' }));
+
+// (optional) if you also accept url‑encoded forms anywhere:
+// app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
 /* ------------------------------------------------------------- */
 /*  Search API (GET /api/search?... )                            */

@@ -18,6 +18,7 @@
     "@algolia/autocomplete-js": "^1.19.2",
     "@algolia/client-search": "^5.33.0",
     "@algolia/recommend": "^5.33.0",
+    "@dqbd/tiktoken": "^1.0.21",
     "@headlessui/react": "^2.2.4",
     "algoliasearch": "4.25.2",
     "commander": "^14.0.0",

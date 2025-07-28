@@ -42,4 +42,7 @@ jobs:
       - name: Run nightly embedding job
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ALGOLIA_APP_ID   : ${{ secrets.ALGOLIA_APP_ID }}
+          ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
+          OPENAI_HARD_LIMIT_USD: ${{ secrets.OPENAI_HARD_LIMIT_USD }}
         run: npx tsx scripts/enrich_jobs.ts

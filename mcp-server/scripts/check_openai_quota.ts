@@ -64,8 +64,8 @@ async function main() {
 }
 
 main().catch((err) => {
-    console.error('OpenAI response', err.response?.data)
-  console.error('Quota check failed', err.response?.data ?? err);
-  /* Option A: change to “return” so the job continues even if usage fails */
-  process.exit(1);
+    const msg = err?.response?.data ?? err;
+    console.warn('[quota‑check] usage endpoint failed – continuing anyway');
+    console.warn('Details:', JSON.stringify(msg, null, 2));
+  /* do NOT exit(1); just return so GitHub Actions step succeeds */
 });

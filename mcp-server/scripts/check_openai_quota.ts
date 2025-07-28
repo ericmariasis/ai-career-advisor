@@ -13,8 +13,8 @@ async function main() {
       };
 
   // 1. Retrieve the usage for the current billing period
-  const urlUsage = 'https://api.openai.com/v1/dashboard/billing/usage';
-  const urlGrants= 'https://api.openai.com/v1/dashboard/billing/credit_grants';
+    const urlUsage  = 'https://api.openai.com/dashboard/billing/usage';
+    const urlGrants = 'https://api.openai.com/dashboard/billing/credit_grants';
   
   // determine current billing cycle (1st‑of‑month → today, UTC)
   const today  = new Date().toISOString().slice(0, 10);        // YYYY‑MM‑DD

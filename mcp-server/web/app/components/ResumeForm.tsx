@@ -1,7 +1,9 @@
 'use client';
-import { useState } from 'react';
-import axios from 'axios';
+import { useState, useTransition } from 'react';
+import { useDebouncedApi } from '@/hooks/useDebouncedApi';   // ← new file you added
 import type { Job } from './JobCard';
+
+const MIN_CHARS = 20;
 
 type ResumeResp = { skills: string[]; hits: Job[] };
 
@@ -11,67 +13,121 @@ export default function ResumeForm({
   onResult: (r: ResumeResp) => void;
 }) {
   const [text, setText] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError]   = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  
+  // Debounced POST helper (600 ms by default)
+  const sendResume = useDebouncedApi<{ resumeText: string }>('/api/resume', 600);
+  const sendFeedback = useDebouncedApi<{ resumeText: string }>(
+    '/api/resume/feedback',
+    600
+  );
 
-  const submit = async () => {
-    if (!text.trim()) return;
-    setLoading(true);
-    setError(null);
-    setFeedback(null);
-    try {
-      const { data } = await axios.post<ResumeResp>('/api/resume', {
-        resumeText: text,
-      });
-      onResult(data);
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      const val = e.target.value;
+      setText(val);
+    
+        // Nothing yet
+        if (!val.trim()) return;
       
-      // ★ NEW: fetch LLM feedback
-      const { data: fb } = await axios.post<{ feedback: string }>(
-        '/api/resume/feedback',
-        { resumeText: text }
-      );
-      setFeedback(fb.feedback);
-    } catch (err: any) {
-      setError(err?.response?.data?.error ?? 'Upload failed');
-    } finally {
-      setLoading(false);
-    }
+        // Still too short → show warning and bail
+        if (val.trim().length < MIN_CHARS) {
+          if (!error)                     // avoid extra renders
+            setError(`Type at least ${MIN_CHARS} characters to start matching jobs…`);
+          return;
+        }
+      
+        // Long enough now → clear any previous warning
+        if (error) setError(null);
+    
+      startTransition(() => {
+        // debounced recommendations
+        sendResume({ resumeText: val })
+          .then(res => res.json())
+          .then(({ skills, recommendations }) =>
+            onResult({ skills, hits: recommendations })       // transform key
+          )
+          .catch(() => {/* swallow for now */});
+    
+        // debounced advice
+        sendFeedback({ resumeText: val })
+          .then(r => r.data)
+          .then(({ feedback }) => {
+            setFeedback(feedback);
+          })
+          .catch(err => console.error('sendFeedback error', err));
+      });
+    };
+
+    // fire when the Match & Advise button is clicked
+const submit = () => {
+  if (!text.trim()) return;
+
+  
+    // Guard for button clicks (handleChange will have cleared it already)
+    if (text.trim().length < MIN_CHARS) return;
+  
+    if (error) setError(null);        // ensure warning gone on manual submit
+
+  // Show “Analyzing…” via React 18 transition state
+  startTransition(() => {
+    // 1️⃣  debounced résumé match
+    sendResume({ resumeText: text })
+      .then(res => res.json())
+      .then(({ skills, recommendations }) =>
+        onResult({ skills, hits: recommendations })       // transform key
+      )
+      .catch(() => {});
+
+    // 2️⃣  debounced feedback
+    sendFeedback({ resumeText: text })
+      .then(r => r.data)
+      .then(({ feedback }) => {
+        console.log('[ResumeForm] feedback payload →', feedback);  // ← add
+        setFeedback(feedback);
+      })
+      .catch(() => {});
+  });
 };
 
-      // ★ NEW: handler to re-run only the feedback call
-      const regenerateFeedback = async () => {
-        if (!text.trim()) return;
-        setLoading(true);
-        setError(null);
-        try {
-          const { data: fb } = await axios.post<{ feedback: string }>(
-            '/api/resume/feedback',
-            { resumeText: text }
-          );
-          setFeedback(fb.feedback);
-        } catch (err: any) {
-          setError(err?.response?.data?.error ?? 'Regeneration failed');
-        } finally {
-          setLoading(false);
-        }
-      };
+
+const regenerateFeedback = () => {
+    if (!text.trim()) return;
+    setError(null);
+  
+    startTransition(() => {
+      sendFeedback({ resumeText: text })
+        .then(res => res.data)                 // fetch → Response
+        .then(({ feedback }) => setFeedback(feedback))
+        .catch(err => {
+          console.error(err);
+          setError('Regeneration failed');
+        });
+    });
+  };
 
   return (
     <div className="space-y-2">
-      <textarea
-        value={text}
-        onChange={e => setText(e.target.value)}
+<textarea
+  value={text}
+  onChange={handleChange}
         rows={6}
         placeholder="Paste your résumé text here…"
         className="w-full border rounded p-3 text-sm"
       />
+{text.trim().length < MIN_CHARS && (
+  <p className="text-xs text-gray-500">
+    Type at least {MIN_CHARS} characters to start matching jobs…
+  </p>
+)}
+
       <button
         onClick={submit}
-        disabled={loading}
+        disabled={isPending}
         className="bg-emerald-600 text-white px-4 py-1.5 rounded disabled:opacity-50 flex items-center justify-center"
       >
-        {loading && (
+        {isPending && (
           <svg
             className="animate-spin h-4 w-4 mr-2 text-white"
             xmlns="http://www.w3.org/2000/svg"
@@ -82,7 +138,7 @@ export default function ResumeForm({
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V12z" />
           </svg>
         )}
-        {loading ? 'Analyzing…' : 'Match & Advise'}
+        {isPending ? 'Analyzing…' : 'Match & Advise'}
       </button>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -97,10 +153,10 @@ export default function ResumeForm({
 
         <button
           onClick={regenerateFeedback}
-          disabled={loading}
+          disabled={isPending}
           className="mt-4 flex items-center text-sm text-indigo-400 hover:underline disabled:opacity-50"
         >
-          {loading && (
+          {isPending && (
             <svg
               className="animate-spin h-4 w-4 mr-2 text-indigo-400"
               xmlns="http://www.w3.org/2000/svg"
@@ -111,7 +167,7 @@ export default function ResumeForm({
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V12z" />
             </svg>
           )}
-          {loading ? 'Regenerating…' : 'Regenerate Advice'}
+          {isPending ? 'Regenerating…' : 'Regenerate Advice'}
         </button>
       </div>
     )}

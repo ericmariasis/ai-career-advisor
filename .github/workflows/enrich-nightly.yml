@@ -8,23 +8,30 @@ on:
 jobs:
   enrich:
     runs-on: ubuntu-latest
+    
+    # All steps start in mcp-server/
+    defaults:
+      run:
+        working-directory: mcp-server
 
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v3
+      - uses: actions/setup-node@v4       # same as prune.yml
         with:
-          version: 8
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
 
       - name: Install deps
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Check OpenAI quota
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: pnpm check:quota   # script we added earlier
+        run: npm run check:quota
 
       - name: Run nightly embedding job
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: pnpm enrich
+        run: npm enrich

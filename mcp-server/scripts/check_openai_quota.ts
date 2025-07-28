@@ -23,6 +23,9 @@ async function main() {
   // current billing cycle (UTC)
   const today = new Date().toISOString().slice(0, 10);   // YYYY‑MM‑DD
   const start = today.slice(0, 8) + '01';
+  console.log('[quota‑debug] urlUsage  =', `${urlUsage}?start_date=${start}&end_date=${today}`);
+  console.log('[quota‑debug] urlGrants =', urlGrants);
+  console.log('[quota‑debug] headers   =', headers);
 
   const [usageRes, grantsRes] = await Promise.all([
     axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),

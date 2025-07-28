@@ -15,7 +15,7 @@ async function main() {
 
   // 1. Retrieve the usage for the current billing period
   const urlUsage = 'https://api.openai.com/v1/dashboard/billing/usage';
-  const urlSubs  = 'https://api.openai.com/v1/dashboard/billing/subscription';
+  const urlGrants= 'https://api.openai.com/v1/dashboard/billing/credit_grants';
   
   // determine current billing cycle (1st‑of‑month → today, UTC)
   const today  = new Date().toISOString().slice(0, 10);        // YYYY‑MM‑DD
@@ -23,11 +23,11 @@ async function main() {
 
   const [usageRes, subRes] = await Promise.all([
         axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),
-        axios.get(urlSubs,                                         { headers }),
+        axios.get(urlGrants,                                         { headers }),
   ]);
 
   const used = usageRes.data.total_usage / 100;                // cents → USD
-  const limit= subRes.data.hard_limit_usd;
+  const limit= subRes.data.total_granted;
   const remaining = limit - used;
 
   console.log(`OpenAI quota: $${used.toFixed(2)} used / $${limit} limit`);

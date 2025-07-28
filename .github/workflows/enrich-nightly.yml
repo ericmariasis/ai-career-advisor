@@ -12,7 +12,7 @@ jobs:
     # ───────────── Side‑car services (same level as defaults / steps) ─────────────
     services:
       redis:
-        image: redis:7
+        image: redis/redis-stack-server:7.2.0
         ports:
           - 6379:6379
         options: >-

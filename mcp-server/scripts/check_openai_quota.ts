@@ -1,35 +1,36 @@
 /**
- * Fails with exit code 1 when today's remaining embedding budget < threshold.
+ * Exit 1 when remaining quota < thresholdUSD (default $5)
  *
- * Usage: pnpm tsx scripts/check_openai_quota.ts  (thresholdUSD)
+ * Usage:  node scripts/check_openai_quota.js   10
+ *         npx tsx  scripts/check_openai_quota.ts 7
  */
 import 'dotenv/config';
 import axios from 'axios';
 
 async function main() {
-  const threshold = Number(process.argv[2] ?? '5');            // $5 default
-    const headers   = {
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      };
+  const threshold = Number(process.argv[2] ?? '5');   // $5 default
 
-  // 1. Retrieve the usage for the current billing period
-    const urlUsage  = 'https://api.openai.com/dashboard/billing/usage';
-    const urlGrants = 'https://api.openai.com/dashboard/billing/credit_grants';
-  
-  // determine current billing cycle (1st‑of‑month → today, UTC)
-  const today  = new Date().toISOString().slice(0, 10);        // YYYY‑MM‑DD
-  const start  = today.slice(0, 8) + '01';                     // first day
+  // -------- correct headers (no Beta flag) ----------
+  const headers = { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` };
 
-  const [usageRes, subRes] = await Promise.all([
-        axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),
-        axios.get(urlGrants,                                         { headers }),
+  // -------- correct endpoints (NO “v1”) -------------
+  const urlUsage  = 'https://api.openai.com/dashboard/billing/usage';
+  const urlGrants = 'https://api.openai.com/dashboard/billing/credit_grants';
+
+  // current billing cycle (UTC)
+  const today = new Date().toISOString().slice(0, 10);   // YYYY‑MM‑DD
+  const start = today.slice(0, 8) + '01';
+
+  const [usageRes, grantsRes] = await Promise.all([
+    axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),
+    axios.get(urlGrants, { headers }),
   ]);
 
-    const used       = usageRes.data.total_usage / 100;       // cents → USD
-    const remaining  = subRes.data.total_available;        // already USD
-    const limit      = subRes.data.total_granted;
+  const used      = usageRes.data.total_usage / 100;      // cents → USD
+  const remaining = grantsRes.data.total_available;       // USD
+  const limit     = grantsRes.data.total_granted;         // USD
 
-  console.log(`OpenAI quota: $${used.toFixed(2)} used / $${limit} limit`);
+  console.log(`OpenAI quota: $${used.toFixed(2)} used / $${limit.toFixed(2)} limit`);
   if (remaining < threshold) {
     console.error(`❌ Remaining quota $${remaining.toFixed(2)} < threshold $${threshold}`);
     process.exit(1);

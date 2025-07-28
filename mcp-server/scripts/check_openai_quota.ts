@@ -17,7 +17,7 @@ async function main() {
     };
     
     const urlUsage  = 'https://api.openai.com/v1/dashboard/billing/usage';
-    const urlGrants = 'https://api.openai.com/v1/dashboard/billing/credit_grants';
+    const urlLimit  = 'https://api.openai.com/v1/dashboard/billing/subscription';
 
   // current billing cycle (UTC)
   const today = new Date().toISOString().slice(0, 10);   // YYYY‑MM‑DD
@@ -26,14 +26,14 @@ async function main() {
   console.log('[quota‑debug] urlGrants =', urlGrants);
   console.log('[quota‑debug] headers   =', headers);
 
-  const [usageRes, grantsRes] = await Promise.all([
+  const [usageRes, limitRes]  = await Promise.all([
     axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),
-    axios.get(urlGrants, { headers }),
+    axios.get(urlLimit,  { headers }),
   ]);
 
   const used      = usageRes.data.total_usage / 100;      // cents → USD
-  const remaining = grantsRes.data.total_available;       // USD
-  const limit     = grantsRes.data.total_granted;         // USD
+  const limit     = limitRes.data.hard_limit_usd;          // USD
+  const remaining = limit - used;
 
   console.log(`OpenAI quota: $${used.toFixed(2)} used / $${limit.toFixed(2)} limit`);
   if (remaining < threshold) {

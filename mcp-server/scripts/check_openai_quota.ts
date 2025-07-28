@@ -8,15 +8,22 @@ import axios from 'axios';
 
 async function main() {
   const threshold = Number(process.argv[2] ?? '5');            // $5 default
-  const headers   = { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` };
+    const headers   = {
+        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'usage-1',                  // ← REQUIRED for v1 dashboard endpoints
+      };
 
   // 1. Retrieve the usage for the current billing period
-  const urlUsage = 'https://api.openai.com/dashboard/billing/usage?start_date=2025-07-01&end_date=2025-07-28';
-  const urlSubs  = 'https://api.openai.com/dashboard/billing/subscription';
+  const urlUsage = 'https://api.openai.com/v1/dashboard/billing/usage';
+  const urlSubs  = 'https://api.openai.com/v1/dashboard/billing/subscription';
+  
+  // determine current billing cycle (1st‑of‑month → today, UTC)
+  const today  = new Date().toISOString().slice(0, 10);        // YYYY‑MM‑DD
+  const start  = today.slice(0, 8) + '01';                     // first day
 
   const [usageRes, subRes] = await Promise.all([
-    axios.get(urlUsage, { headers }),
-    axios.get(urlSubs,  { headers }),
+        axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),
+        axios.get(urlSubs,                                         { headers }),
   ]);
 
   const used = usageRes.data.total_usage / 100;                // cents → USD

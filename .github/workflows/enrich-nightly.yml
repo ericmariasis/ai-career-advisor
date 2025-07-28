@@ -26,6 +26,14 @@ jobs:
       - name: Install deps
         run: npm ci
 
+
+      - name: Debug ‑ show check_quota script
+        run: |
+          echo '─── mcp‑server/scripts/check_openai_quota.ts (head) ───'
+          cat scripts/check_openai_quota.ts | head -n 20
+          echo '───────────────────────────────────────────────────────'
+
+
       - name: Check OpenAI quota
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

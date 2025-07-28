@@ -3,6 +3,7 @@ import { extractSkills }        from '../utils/extractSkills';
 import { redisConn, knnSearch } from '../lib/redisSearch';
 import { openai, OPENAI_MODEL } from '../openai';
 import { countTokens }          from '../lib/tokens';
+import { createHash } from 'crypto';
 
 const router = Router();
 
@@ -56,7 +57,8 @@ router.post('/', async (req, res) => {
         `[resume] truncated from ${rawResume.length} → ${inputText.length} chars (${tokens} tokens)`
       );
     }
-
+    const hash = createHash('sha256').update(inputText).digest('hex');
+    const cacheKey = `cv:${hash}`;
     /* ---------- 2‑a. regex skills ---------- */
     const kwSkills: string[] = extractSkills(rawResume);
 
@@ -92,17 +94,32 @@ router.post('/', async (req, res) => {
         .json({ error: 'No recognizable skills found in résumé text.' });
     }
 
-        /* ---------- 3. Embed résumé & run Redis K‑NN ---------- */
-        const embedResp  = await openai.embeddings.create({
-          model: EMBED_MODEL,
-          input: inputText,
-        });
-        const resumeVec  = embedResp.data[0].embedding;     // float[1536]
-    
-        // Get top‑20 nearest jobs (adjust k as you like)
-                // Get top‑20 nearest jobs
-                const hits = await knnSearch(resumeVec, 20);
-        
+/* ---------- 3. Embed résumé & run Redis K‑NN (with cache) ---------- */
+const r = await redisConn();                      // reuse for later job fetches
+let resumeVec: number[];                   // will hold the 1536‑dim vector
+
+// 3‑a.  Look for an existing vector
+const cachedVec = await r.json.get(cacheKey, { path: '.embedding' }) as number[] | null;
+
+if (cachedVec && Array.isArray(cachedVec)) {
+  console.log('[resume] cache hit for', cacheKey);
+  resumeVec = cachedVec;                         // ✅  use cached vector
+} else {
+  console.log('[resume] cache miss – embedding résumé');
+  // 3‑b.  Generate the vector with OpenAI
+  const embedResp = await openai.embeddings.create({
+    model: EMBED_MODEL,
+    input: inputText,
+  });
+  resumeVec = embedResp.data[0].embedding;
+
+  // 3‑c.  Store in Redis and set TTL (24 h here – tweak as you wish)
+  await r.json.set(cacheKey, '.', { embedding: resumeVec });
+  await r.expire(cacheKey, 60 * 60 * 24);         // 86 400 s = 24 h
+}
+
+/* ---------- 4. Nearest‑neighbour search (unchanged) ---------- */
+const hits = await knnSearch(resumeVec, 20);        
                 if (hits.length === 0) {
                   return res.json({
                     skills,
@@ -113,7 +130,6 @@ router.post('/', async (req, res) => {
                 }      // [{ id, score }]
     
         // Fetch the neighbour docs (re‑use `lean()` helper from recommend.ts if you like)
-        const r     = await redisConn();
         const pipe  = r.multi();
         hits.forEach(h => {
             const key =

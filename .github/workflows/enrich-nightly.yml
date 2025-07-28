@@ -1,0 +1,30 @@
+name: Nightly Job – Vector Enrich
+
+on:
+  schedule:
+    - cron:  '0 4 * * *'       # 04:00 UTC, 15 min before prune
+  workflow_dispatch:
+
+jobs:
+  enrich:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+
+      - name: Check OpenAI quota
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: pnpm check:quota   # script we added earlier
+
+      - name: Run nightly embedding job
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: pnpm enrich

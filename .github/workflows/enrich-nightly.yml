@@ -29,9 +29,9 @@ jobs:
       - name: Check OpenAI quota
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: npm run check:quota
+        run: npx tsx scripts/check_openai_quota.ts
 
       - name: Run nightly embedding job
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: npm enrich
+        run: npx tsx scripts/enrich_jobs.ts

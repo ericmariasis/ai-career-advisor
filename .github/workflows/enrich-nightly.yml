@@ -8,6 +8,19 @@ on:
 jobs:
   enrich:
     runs-on: ubuntu-latest
+
+       # ─────────────────────── Redis side‑car ──────────────────────
+    services:
+      redis:
+        image: redis:7                # official image, latest 7.x
+        ports:
+          - 6379:6379                 # expose on the runner
+        options: >-                   # optional health‑check
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+   # ──────────────────────────────────────────────────────────────
     
     # All steps start in mcp-server/
     defaults:

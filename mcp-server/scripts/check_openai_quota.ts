@@ -26,7 +26,10 @@ async function main() {
   }
 
   /* ---------- usage endpoint (still works with API key) ---------- */
-  const headers = { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` };
+  const headers = {
+    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    'OpenAI-Beta': 'usage-1',          // <-- REQUIRED for usage endpoint
+  };
   const urlUsage = 'https://api.openai.com/dashboard/billing/usage';
 
   console.log('[quota‑debug]', urlUsage, headers)

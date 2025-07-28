@@ -56,7 +56,10 @@ jobs:
         env:
           OPENAI_API_KEY:         ${{ secrets.OPENAI_API_KEY }}
           OPENAI_HARD_LIMIT_USD:  ${{ secrets.OPENAI_HARD_LIMIT_USD }}
-        run: npx tsx scripts/check_openai_quota.ts
+        run: |
+          echo "API key present? ${OPENAI_API_KEY:+yes}"
+          echo "Hard limit: $OPENAI_HARD_LIMIT_USD"
+          npx tsx scripts/check_openai_quota.ts
 
       - name: 🚀 Run nightly embedding job
         env:

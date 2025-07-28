@@ -11,7 +11,10 @@ async function main() {
   const threshold = Number(process.argv[2] ?? '5');   // $5 default
 
   // -------- correct headers (no Beta flag) ----------
-  const headers = { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` };
+  const headers = {
+    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    'OpenAI-Beta': 'usage-1',
+  };
 
   // -------- correct endpoints (NO “v1”) -------------
   const urlUsage  = 'https://api.openai.com/dashboard/billing/usage';

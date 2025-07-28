@@ -37,6 +37,9 @@ jobs:
       - name: Check OpenAI quota
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ALGOLIA_APP_ID   : ${{ secrets.ALGOLIA_APP_ID }}
+          ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
+          OPENAI_HARD_LIMIT_USD: ${{ secrets.OPENAI_HARD_LIMIT_USD }}
         run: npx tsx scripts/check_openai_quota.ts
 
       - name: Run nightly embedding job

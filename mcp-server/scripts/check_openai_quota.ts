@@ -1,49 +1,69 @@
 /**
- * Exit 1 when remaining quota < thresholdUSD (default $5)
+ * Fails with exit 1 when remaining quota < thresholdUSD (default $5).
  *
- * Usage:  node scripts/check_openai_quota.js   10
- *         npx tsx  scripts/check_openai_quota.ts 7
+ * Option B – get the hard‑limit from a GH secret instead of the API, because
+ *            credit_grants / subscription require a browser session.
+ *
+ * Required secrets:
+ *   OPENAI_API_KEY        – your normal key (for usage endpoint)
+ *   OPENAI_HARD_LIMIT_USD – e.g. "120"  (string so GitHub masks it)
+ *
+ * Usage:  npx tsx scripts/check_openai_quota.ts [thresholdUSD]
  */
+
 import 'dotenv/config';
 import axios from 'axios';
 
 async function main() {
-  const threshold = Number(process.argv[2] ?? '5');   // $5 default
+  const threshold = Number(process.argv[2] ?? '5');          // $5 default
+  const hardLimit = Number(process.env.OPENAI_HARD_LIMIT_USD ?? '0');
 
-  // -------- correct headers (no Beta flag) ----------
+  if (!hardLimit) {
+    console.warn(
+      '[quota‑check] OPENAI_HARD_LIMIT_USD secret is missing ‑‑ skipping check'
+    );
+    return; // exit 0 so workflow continues
+  }
+
+  /* ---------- usage endpoint (still works with API key) ---------- */
   const headers = {
-      Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      'OpenAI-Beta': 'usage-1',        // REQUIRED for the v1 billing endpoints
-    };
-    
-    const urlUsage  = 'https://api.openai.com/v1/dashboard/billing/usage';
-    const urlLimit  = 'https://api.openai.com/dashboard/billing/credit_grants';  // ← no “v1”
+    Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+    'OpenAI-Beta': 'usage-1',
+  };
+  const urlUsage =
+    'https://api.openai.com/v1/dashboard/billing/usage';
 
-  // current billing cycle (UTC)
-  const today = new Date().toISOString().slice(0, 10);   // YYYY‑MM‑DD
-  const start = today.slice(0, 8) + '01';
-  console.log('[quota‑debug] urlUsage  =', `${urlUsage}?start_date=${start}&end_date=${today}`);
-  console.log('[quota‑debug] urlGrants =', urlLimit);
-  console.log('[quota‑debug] headers   =', headers);
+  const today = new Date().toISOString().slice(0, 10);       // YYYY‑MM‑DD
+  const start = today.slice(0, 8) + '01';                    // 1st of month
 
-  const [usageRes, limitRes]  = await Promise.all([
-    axios.get(`${urlUsage}?start_date=${start}&end_date=${today}`, { headers }),
-    axios.get(urlLimit,  { headers }),
-  ]);
+  const { data } = await axios.get(
+    `${urlUsage}?start_date=${start}&end_date=${today}`,
+    { headers }
+  );
 
-  const used      = usageRes.data.total_usage / 100;      // cents → USD
-  const limit     = limitRes.data.total_granted;          // USD
-  const remaining = limitRes.data.total_available;        // USD
+  const usedUSD   = data.total_usage / 100;                  // cents → USD
+  const remaining = hardLimit - usedUSD;
 
-  console.log(`OpenAI quota: $${used.toFixed(2)} used / $${limit.toFixed(2)} limit`);
+  console.log(
+    `OpenAI quota: $${usedUSD.toFixed(2)} used / $${hardLimit.toFixed(
+      2
+    )} limit`
+  );
+
   if (remaining < threshold) {
-    console.error(`❌ Remaining quota $${remaining.toFixed(2)} < threshold $${threshold}`);
+    console.error(
+      `❌ Remaining quota $${remaining.toFixed(2)} < threshold $${threshold}`
+    );
     process.exit(1);
   }
-  console.log(`✅ Remaining quota $${remaining.toFixed(2)} is above threshold.`);
+
+  console.log(
+    `✅ Remaining quota $${remaining.toFixed(2)} is above threshold.`
+  );
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Quota check failed', err.response?.data ?? err);
+  /* Option A: change to “return” so the job continues even if usage fails */
   process.exit(1);
 });

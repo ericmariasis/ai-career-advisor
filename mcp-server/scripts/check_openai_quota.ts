@@ -10,7 +10,6 @@ async function main() {
   const threshold = Number(process.argv[2] ?? '5');            // $5 default
     const headers   = {
         Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-        'OpenAI-Beta': 'usage-1',                  // ← REQUIRED for v1 dashboard endpoints
       };
 
   // 1. Retrieve the usage for the current billing period
@@ -26,9 +25,9 @@ async function main() {
         axios.get(urlGrants,                                         { headers }),
   ]);
 
-  const used = usageRes.data.total_usage / 100;                // cents → USD
-  const limit= subRes.data.total_granted;
-  const remaining = limit - used;
+    const used       = usageRes.data.total_usage / 100;       // cents → USD
+    const remaining  = subRes.data.total_available;        // already USD
+    const limit      = subRes.data.total_granted;
 
   console.log(`OpenAI quota: $${used.toFixed(2)} used / $${limit} limit`);
   if (remaining < threshold) {

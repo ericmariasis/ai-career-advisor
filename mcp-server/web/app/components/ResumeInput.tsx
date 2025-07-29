@@ -1,5 +1,5 @@
 'use client'
-import { useRef, ChangeEvent } from 'react'
+import { useRef, useState, ChangeEvent } from 'react'
 
 interface Props {
   value: string
@@ -9,6 +9,7 @@ interface Props {
 
 export default function ResumeInput({ value, onChange, onTextReady }: Props) {
   const fileInput = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
 
   async function handleFile(file: File) {
     /* ↓ allow only PDF / DOCX */
@@ -24,6 +25,7 @@ export default function ResumeInput({ value, onChange, onTextReady }: Props) {
     body.append('file', file)
 
     try {
+        setBusy(true)
       const res = await fetch('/api/resume/upload', { method: 'POST', body })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const { text } = await res.json()
@@ -31,6 +33,8 @@ export default function ResumeInput({ value, onChange, onTextReady }: Props) {
     } catch (err) {
       console.error(err)
       alert('Upload failed – check size (< 5 MB) & type.')
+          } finally {
+              setBusy(false)                           
     }
   }
 
@@ -61,9 +65,19 @@ export default function ResumeInput({ value, onChange, onTextReady }: Props) {
       <button
         type="button"
         onClick={() => fileInput.current?.click()}
-        className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
+        className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500 flex items-center gap-2"
       >
-        Upload PDF / DOCX
+               {/* inline SVG so there’s no extra deps */}
+        {busy && (
+          <svg
+            className="h-4 w-4 animate-spin text-white"
+            viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"
+          >
+            <circle cx="12" cy="12" r="10" className="opacity-25" />
+            <path d="M12 2a10 10 0 000 20" className="opacity-75" />
+          </svg>
+        )}
+        {busy ? 'Uploading…' : 'Upload PDF / DOCX'}
       </button>
     </div>
   )

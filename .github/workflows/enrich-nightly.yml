@@ -68,4 +68,4 @@ jobs:
           ALGOLIA_ADMIN_KEY:      ${{ secrets.ALGOLIA_ADMIN_KEY }}
           OPENAI_HARD_LIMIT_USD:  ${{ secrets.OPENAI_HARD_LIMIT_USD }}
           REDIS_URL:              redis://localhost:6379
-        run: npx tsx scripts/enrich_jobs.ts
+        run: npx tsx scripts/enrich_jobs.ts --verbose

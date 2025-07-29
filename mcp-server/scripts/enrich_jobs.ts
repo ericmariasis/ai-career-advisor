@@ -179,10 +179,9 @@ async function enrichBatch(batch: any[]): Promise<EnrichResult> {
          * --------------------------------------------------------- */
         let seen = existsCache.has(key);
          if (!seen) {
-               const n = await redis.exists(key);       // returns 0 or 1
-               seen = n === 1;                          // ← coerce to boolean
-               if (seen) existsCache.add(key);
-             }
+            seen = (await redis.exists(key)) === 1;  // ← cast 0/1 → boolean
+            if (seen) existsCache.add(key);
+         }
       
         /** ----------------------------------------------------------
          * 2.  If we still need a vector → embed once
@@ -212,7 +211,7 @@ async function enrichBatch(batch: any[]): Promise<EnrichResult> {
             pipe.json.set(key, '$.embedding',      arr);
             pipe.json.set(key, '$.lastEnrichedAt', Date.now());
           }
-        } else {
+        } else if (seen) {
           /* Already has a good vector → merely bump the timestamp */
           pipe.json.set(key, '$.lastEnrichedAt', Date.now());
         }

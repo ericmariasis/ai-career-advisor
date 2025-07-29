@@ -2,6 +2,7 @@
 import { useState, useTransition } from 'react';
 import { useDebouncedApi } from '@/hooks/useDebouncedApi';   // ← new file you added
 import type { Job } from './JobCard';
+import ResumeDropZone from './ResumeDropZone';
 
 const MIN_CHARS = 20;
 
@@ -109,13 +110,26 @@ const regenerateFeedback = () => {
 
   return (
     <div className="space-y-2">
-<textarea
-  value={text}
-  onChange={handleChange}
-        rows={6}
-        placeholder="Paste your résumé text here…"
-        className="w-full border rounded p-3 text-sm"
-      />
+    <ResumeDropZone
+      /* when user drops/chooses a file and the server responds
+         with the extracted text we immediately reuse the old
+         debounce flow */
+      onTextReady={(extracted: string) => {
+        // update UI
+        setText(extracted);
+        // reuse existing logic → pretend it was manually typed
+        handleChange({ target: { value: extracted } } as any);
+      }}
+
+      /* fallback manual typing — still the old textarea props */
+      fallbackProps={{
+        value: text,
+        onChange: handleChange,
+        rows: 6,
+        placeholder: 'Paste your résumé text here…',
+        className: 'w-full border rounded p-3 text-sm',
+      }}
+    />
 {text.trim().length < MIN_CHARS && (
   <p className="text-xs text-gray-500">
     Type at least {MIN_CHARS} characters to start matching jobs…

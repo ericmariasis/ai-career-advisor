@@ -23,6 +23,8 @@ interface EnrichResult {
     updatedIds: string[];
   }
 
+  const existsCache = new Set<string>();
+
 
 // new 👉 extract optional --jobs
 let JOB_LIMIT: number | undefined;
@@ -169,22 +171,55 @@ async function enrichBatch(batch: any[]): Promise<EnrichResult> {
     const updatedIds: string[] = [];
 
     for (const obj of objects) {
-      if (needsEmbedding(obj)) {
-        const txt = textById.get(obj.objectID) ?? '';
-        const vec = await embedText(txt);               // Float32Array
-            const arr = Array.from(vec);
-            obj.embedding = arr;
-            spent += arr.length / 1_000_000;                 // ➌ cost bump
-        
-             pipe.json.set(
-                   `job:${obj.objectID}`,
-                   '$',
-                   { embedding: arr, lastEnrichedAt: Date.now() }   // whole document
-             );
-            updatedIds.push(obj.objectID);
+        const key = `job:${obj.objectID}`;
+      
+        /** ----------------------------------------------------------
+         * 1.  Does Redis already know this job?
+         *     (we memoise the answer so we don’t hit the server twice)
+         * --------------------------------------------------------- */
+        let seen = existsCache.has(key);
+         if (!seen) {
+               const n = await redis.exists(key);       // returns 0 or 1
+               seen = n === 1;                          // ← coerce to boolean
+               if (seen) existsCache.add(key);
+             }
+      
+        /** ----------------------------------------------------------
+         * 2.  If we still need a vector → embed once
+         * --------------------------------------------------------- */
+        if (needsEmbedding(obj)) {
+          const txt = textById.get(obj.objectID) ?? '';
+          const vec = await embedText(txt);        // Float32Array → number[]
+          const arr = Array.from(vec);
+      
+          obj.embedding = arr;                     // for Algolia later
+          spent += arr.length / 1_000_000;
+      
+          if (!seen) {
+            /* ───────── first‑time import → write the WHOLE record ───────── */
+            pipe.json.set(
+              key,
+              '$',
+                     {
+                         ...batch.find(b => b.objectID === obj.objectID)!, // title, salary…
+                         embedding      : arr,
+                         lastEnrichedAt : Date.now(),
+                       },
+            );
+            existsCache.add(key);
+          } else {
+            /* ───────── overwrite just the two paths ───────── */
+            pipe.json.set(key, '$.embedding',      arr);
+            pipe.json.set(key, '$.lastEnrichedAt', Date.now());
+          }
+        } else {
+          /* Already has a good vector → merely bump the timestamp */
+          pipe.json.set(key, '$.lastEnrichedAt', Date.now());
+        }
+      
+        updatedIds.push(obj.objectID);
       }
-
-    }
+      
     
     if (updatedIds.length) {
         await pipe.exec();          // only fire when we queued something

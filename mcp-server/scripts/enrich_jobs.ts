@@ -176,13 +176,14 @@ async function enrichBatch(batch: any[]): Promise<EnrichResult> {
             obj.embedding = arr;
             spent += arr.length / 1_000_000;                 // ➌ cost bump
         
-            pipe.json.set(`job:${obj.objectID}`, '$.embedding', arr);
+             pipe.json.set(
+                   `job:${obj.objectID}`,
+                   '$',
+                   { embedding: arr, lastEnrichedAt: Date.now() }   // whole document
+             );
             updatedIds.push(obj.objectID);
       }
 
-        // stamp the timestamp on *every* job, even if no new vector
-  const key = `job:${obj.objectID}`;
-  pipe.json.set(key, '$.lastEnrichedAt', Date.now()); // ➋
     }
     
     if (updatedIds.length) {

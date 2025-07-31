@@ -1,9 +1,6 @@
 // src/lib/store.ts
-import { join } from 'node:path';
-import { mkdirSync } from 'node:fs';
-
-import low from 'lowdb';
-import FileSync from 'lowdb/adapters/FileSync';
+// 🚀  Redis client (reuse the singleton)
+import redisClient from '../lib/redis';
 
 /* ------------------------------------------------------------------ */
 /* Types                                                               */
@@ -13,39 +10,23 @@ export interface SavedDB {
   favorites: Record<string, string[]>;
 }
 
-/* ------------------------------------------------------------------ */
-/* Init LowDB (sync, CJS‑friendly)                                     */
-/* ------------------------------------------------------------------ */
-const DATA_DIR = join(process.cwd(), '.data');
-const DB_FILE  = join(DATA_DIR, 'favorites.json');
+const favKey = (user: string) => `user:${user}:favs`;
 
-// ensure .data/ exists
-mkdirSync(DATA_DIR, { recursive: true });
-
-const adapter = new FileSync<SavedDB>(DB_FILE);
-const db      = low(adapter);
-
-// seed file on first run
-db.defaults({ favorites: {} }).write();
 
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
-export function toggleFavorite(
-  userToken: string,
-  objectID:  string,
-  save:      boolean,
-): number {
-  // get current list for that user (or empty array)
-  const current: string[] = (db.get(`favorites.${userToken}`) as any).value() ?? [];
-
-  const set = new Set(current);
-  save ? set.add(objectID) : set.delete(objectID);
-
-  db.set(`favorites.${userToken}`, [...set]).write();
-  return set.size;                 // so the route can return “total”
-}
-
-export function getFavorites(userToken: string): string[] {
-  return (db.get(`favorites.${userToken}`) as any).value() ?? [];
-}
+export async function toggleFavorite(
+    userToken: string,
+    objectID:  string,
+    save:      boolean,
+  ): Promise<number> {
+    const key = favKey(userToken);
+    if (save) await redisClient.hSet(key, objectID, 1);
+    else      await redisClient.hDel(key, objectID);
+    return await redisClient.hLen(key);   // new total
+  }
+  
+  export async function getFavorites(userToken: string): Promise<string[]> {
+    return await redisClient.hKeys(favKey(userToken));
+  }

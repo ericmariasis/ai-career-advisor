@@ -66,14 +66,14 @@ router.post('/', async (req, res) => {
 /** GET /api/favorites?userToken=xyz
  *    → { ids: string[] }
  */
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
     const { userToken } = req.query;
     if (!userToken) {
         return res
             .status(400)
             .json({ error: 'userToken query‑param required' });
     }
-    const ids = (0, store_1.getFavorites)(userToken); // ← new helper (sync)
+    const ids = await (0, store_1.getFavorites)(userToken);
     return res.json({ ids });
 });
 /* -------------------------------------------------------------
@@ -85,7 +85,7 @@ router.get('/details', async (req, res) => {
     if (!userToken) {
         return res.status(400).json({ error: 'userToken query-param required' });
     }
-    const ids = (0, store_1.getFavorites)(userToken); // LowDB helper you already have
+    const ids = await (0, store_1.getFavorites)(userToken); // LowDB helper you already have
     if (ids.length === 0)
         return res.json([]); // nothing saved
     try {

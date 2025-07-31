@@ -3,11 +3,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports._setEmbedder = _setEmbedder;
 exports.getCachedAnswer = getCachedAnswer;
 exports.putCachedAnswer = putCachedAnswer;
 const crypto_1 = __importDefault(require("crypto"));
 const redis_1 = __importDefault(require("./redis"));
 const embed_1 = require("./embed");
+// NEW – allow tests to override the embedder
+let currentEmbed = embed_1.embedText;
+function _setEmbedder(fn) { currentEmbed = fn; }
 const DIM = 1536;
 const TAU = 0.90; // similarity threshold
 const CACHE_PREFIX = 'cache:';
@@ -17,7 +21,7 @@ const ONE_WEEK_SECS = 60 * 60 * 24 * 7;
  * Returns { answer, similarity } or null on miss.
  */
 async function getCachedAnswer(task, prompt) {
-    const vec = await (0, embed_1.embedText)(prompt); // Float32Array(1536)
+    const vec = await currentEmbed(prompt); // Float32Array(1536)
     const blob = Buffer.from(vec.buffer); // pack for FT.PARAMS
     const query = `@task:{${task}}=>[KNN 1 @embedding $BLOB AS dist]`;
     const res = await redis_1.default.ft.search('cacheIdx', query, {
@@ -37,7 +41,7 @@ async function getCachedAnswer(task, prompt) {
  * Store an answer in the cache under hash(prompt).
  */
 async function putCachedAnswer(task, prompt, answer) {
-    const embedding = await (0, embed_1.embedText)(prompt);
+    const embedding = await currentEmbed(prompt);
     const hash = crypto_1.default.createHash('sha256').update(prompt).digest('hex');
     const key = CACHE_PREFIX + hash;
     const doc = {

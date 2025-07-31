@@ -1,0 +1,16 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      // ↓ optional but nice: slightly stricter / faster for prod builds
+      "noEmit": false,
+      "allowImportingTsExtensions": false   // we don't need the “.ts” imports in prod
+    },
+    "exclude": [
+      "tests/**/*",           // all unit-test code
+      "vitest.config.mts",    // vitest config file
+      "**/*.test.ts",         // any stray test file
+      "**/*.spec.ts",
+       "web/**/*"
+    ]
+  }
+  

@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import redis from './redis';
-import { embedText } from './embed';
+import { embedText as defaultEmbed} from './embed';
+
+// NEW – allow tests to override the embedder
+let currentEmbed = defaultEmbed;
+export function _setEmbedder(fn: typeof defaultEmbed) { currentEmbed = fn; }
 
 const DIM           = 1536;
 const TAU           = 0.90;                // similarity threshold
@@ -17,7 +21,7 @@ export async function getCachedAnswer(
   task: Task,
   prompt: string
 ): Promise<{ answer: string; similarity: number } | null> {
-  const vec   = await embedText(prompt);           // Float32Array(1536)
+  const vec   = await currentEmbed(prompt);           // Float32Array(1536)
   const blob  = Buffer.from(vec.buffer);           // pack for FT.PARAMS
   const query = `@task:{${task}}=>[KNN 1 @embedding $BLOB AS dist]`;
 
@@ -49,7 +53,7 @@ export async function putCachedAnswer(
   prompt: string,
   answer: string
 ): Promise<void> {
-  const embedding = await embedText(prompt);
+  const embedding = await currentEmbed(prompt);
   const hash      = crypto.createHash('sha256').update(prompt).digest('hex');
   const key       = CACHE_PREFIX + hash;
 

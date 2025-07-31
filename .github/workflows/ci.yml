@@ -1,0 +1,35 @@
+name: CI – server test & build
+
+on:
+  push:
+    branches: [main]        # build every commit on main
+  pull_request:             # and every PR
+  workflow_dispatch:        # manual trigger if needed
+
+jobs:
+  server:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: mcp-server   # all steps start here
+
+    steps:
+      - name: 📥 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🛠  Setup Node 20 + npm cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mcp-server/package-lock.json
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: ✅ Unit tests
+        run: npm test
+
+      - name: 🏗  Build (tsc)
+        run: npm run build

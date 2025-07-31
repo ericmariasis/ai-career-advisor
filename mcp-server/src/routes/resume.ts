@@ -4,6 +4,8 @@ import { redisConn, knnSearch } from '../lib/redisSearch';
 import { openai, OPENAI_MODEL } from '../openai';
 import { countTokens }          from '../lib/tokens';
 import { createHash } from 'crypto';
+import { getCachedAnswer, putCachedAnswer } from '../lib/semcache';
+
 
 const router = Router();
 
@@ -62,23 +64,33 @@ router.post('/', async (req, res) => {
     /* ---------- 2‑a. regex skills ---------- */
     const kwSkills: string[] = extractSkills(rawResume);
 
-    /* ---------- 2‑b. LLM‑enriched skills ---------- */
-    const aiResp   = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
-      temperature: 0,
-      max_tokens: 60,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'Extract a concise comma‑separated list (max 10) of technical skills / tools mentioned in this résumé text.',
-        },
-        { role: 'user', content: rawResume.slice(0, 4_000) },
-      ],
-    });
+/* ---------- 2‑b. LLM‑enriched skills (semantic cache) ---------- */
+const sePrompt = '[SkillExtract] ' + rawResume;
+const seHit    = await getCachedAnswer('skill_extract', sePrompt);
 
-    const skillsRaw = aiResp.choices[0].message.content ?? '';
-    const aiSkills: string[] = skillsRaw
+let aiSkillsRaw: string;
+if (seHit) {
+  console.log(`[cache] skill_extract hit (sim=${seHit.similarity.toFixed(2)})`);
+  aiSkillsRaw = seHit.answer;
+} else {
+  const aiResp = await openai.chat.completions.create({
+    model: OPENAI_MODEL,
+    temperature: 0,
+    max_tokens: 60,
+    messages: [
+      {
+        role: 'system',
+        content:
+          'Extract a concise comma‑separated list (max 10) of technical skills / tools mentioned in this résumé text.',
+      },
+      { role: 'user', content: rawResume.slice(0, 4_000) },
+    ],
+  });
+  aiSkillsRaw = aiResp.choices[0].message.content ?? '';
+  await putCachedAnswer('skill_extract', sePrompt, aiSkillsRaw);
+}
+
+    const aiSkills: string[] = aiSkillsRaw
       .split(/[,;\n]/)
       .map((s: string) => s.trim().toLowerCase())
       .filter((s: string) => !!s)                       // non‑empty
@@ -182,19 +194,28 @@ Be concise.`;
 • Proficiency in Python, SQL, machine learning frameworks
 • Experience with cloud platforms (AWS/Azure/GCP)
 • Strong data visualization and communication skills`;
+const fbPrompt = '[TechSkillFeedback] ' + resumeText;
+const fbHit    = await getCachedAnswer('tech_skill_extract', fbPrompt);
 
-    const completion = await openai.chat.completions.create({
-      model: OPENAI_MODEL,
-      temperature: 0,
-      max_tokens: 300,
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user',   content: user   },
-      ],
-    });
+let feedback: string;
+if (fbHit) {
+  console.log(`[cache] tech_skill_extract hit (sim=${fbHit.similarity.toFixed(2)})`);
+  feedback = fbHit.answer.trim();
+} else {
+  const completion = await openai.chat.completions.create({
+    model: OPENAI_MODEL,
+    temperature: 0,
+    max_tokens: 300,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user',   content: user   },
+    ],
+  });
+  feedback = completion.choices[0].message?.content?.trim() || '';
+  await putCachedAnswer('tech_skill_extract', fbPrompt, feedback);
+}
+return res.json({ feedback });
 
-    const feedback = completion.choices[0].message?.content?.trim() || '';
-    return res.json({ feedback });
   } catch (err) {
     console.error('Résumé feedback error', err);
     return res.status(500).json({ error: 'Failed to generate résumé feedback' });

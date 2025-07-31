@@ -5,6 +5,7 @@ import favoritesRouter  from './routes/favorites';
 import resumeRouter from './routes/resume';
 import recommendRouter from './routes/recommend';
 import { jobsIndex } from './lib/algolia'; // still used by /recommend
+import { ensureCacheIndex } from './lib/createCacheIndex';
 
 dotenv.config();
 
@@ -38,6 +39,13 @@ app.post('/api/recommend/top5', async (_req, res) => {
 /* ------------------------------------------------------------- */
 const PORT = process.env.PORT || 4000;
 export default app;
-app.listen(PORT, () =>
-  console.log(`✅  MCP server running on http://localhost:${PORT}`),
-);
+
+// Initialize cache index before starting server
+ensureCacheIndex().then(() => {
+  app.listen(PORT, () =>
+    console.log(`✅  MCP server running on http://localhost:${PORT}`),
+  );
+}).catch(err => {
+  console.error('Failed to initialize cache index:', err);
+  process.exit(1);
+});

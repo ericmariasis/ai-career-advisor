@@ -1,6 +1,6 @@
 // src/types.ts
 export interface Job {
-  objectID: number;            // ← it’s a number in your data
+  objectID: string;            // ← it’s a number in your data
   title: string;
   company: string | null;
   location: string | null;

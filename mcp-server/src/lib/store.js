@@ -8,18 +8,43 @@ exports.getFavorites = getFavorites;
 // src/lib/store.ts
 // 🚀  Redis client (reuse the singleton)
 const redis_1 = __importDefault(require("../lib/redis"));
-const favKey = (user) => `user:${user}:favs`;
+/* NEW – analytics stream constants */
+const STREAM_KEY = 'favorites_activity'; // stream name
+const STREAM_MAX = 10000; // keep roughly last 10k events
 /* ------------------------------------------------------------------ */
 /* Helpers                                                             */
 /* ------------------------------------------------------------------ */
 async function toggleFavorite(userToken, objectID, save) {
-    const key = favKey(userToken);
+    const key = `user:${userToken}:favs`;
+    // 1️⃣  normal favourites logic (unchanged)
     if (save)
         await redis_1.default.hSet(key, objectID, 1);
     else
         await redis_1.default.hDel(key, objectID);
-    return await redis_1.default.hLen(key); // new total
+    const total = await redis_1.default.hLen(key);
+    // 2️⃣  fire-and-forget analytics event
+    try {
+        await redis_1.default.xAdd(STREAM_KEY, '*', // auto-ID
+        {
+            user: userToken,
+            job: objectID,
+            act: save ? 'saved' : 'unsaved',
+            total: total.toString(),
+            ts: Date.now().toString()
+        }, {
+            TRIM: {
+                strategy: 'MAXLEN',
+                strategyModifier: '~',
+                threshold: STREAM_MAX
+            }
+        });
+    }
+    catch (err) {
+        console.error('[favorites] stream log failed', err);
+        /* do NOT block the main request – just log the error */
+    }
+    return total;
 }
 async function getFavorites(userToken) {
-    return await redis_1.default.hKeys(favKey(userToken));
+    return await redis_1.default.hKeys(`user:${userToken}:favs`);
 }

@@ -1,0 +1,30 @@
+# mcp-server/docker-compose.yml
+services:
+  redis:
+    image: redis/redis-stack-server:7.2.0-v9   # same as before
+    ports: ["6379:6379"]
+
+  grafana:
+    image: grafana/grafana-oss:10.4.4          # ✅ valid tag
+    # or simply:  image: grafana/grafana-oss:latest
+    ports: ["3001:3000"]
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - redis
+  server:                       # 👈 new
+    build:
+      context: .
+      dockerfile: Dockerfile    # see below
+    env_file:
+      - .env.docker
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PORT=4000               # whatever your server listens on
+    ports:
+      - "4000:4000"
+    depends_on:
+      - redis
+
+volumes:
+  grafana-data:

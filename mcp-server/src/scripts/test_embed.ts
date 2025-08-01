@@ -1,4 +1,4 @@
-import { embedText } from '../src/lib/embeddings';
+import { embedText } from '../lib/embeddings';
 
 (async () => {
   const vec = await embedText('Software engineer with Python and ML experience');

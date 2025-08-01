@@ -48,7 +48,7 @@ jobs:
       - name: 🔍 Show top of quota script
         run: |
           echo '─── mcp‑server/scripts/check_openai_quota.ts (head) ───'
-          cat scripts/check_openai_quota.ts
+          cat src/scripts/check_openai_quota.ts
           echo '───────────────────────────────────────────────────────'
       # ───────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ jobs:
         run: |
           echo "API key present? ${OPENAI_API_KEY:+yes}"
           echo "Hard limit: $OPENAI_HARD_LIMIT_USD"
-          npx tsx scripts/check_openai_quota.ts
+          npx tsx src/scripts/check_openai_quota.ts
 
       - name: 🚀 Run nightly embedding job
         env:
@@ -68,4 +68,4 @@ jobs:
           ALGOLIA_ADMIN_KEY:      ${{ secrets.ALGOLIA_ADMIN_KEY }}
           OPENAI_HARD_LIMIT_USD:  ${{ secrets.OPENAI_HARD_LIMIT_USD }}
           REDIS_URL:              redis://localhost:6379
-        run: npx tsx scripts/enrich_jobs.ts --verbose
+        run: npx tsx src/scripts/enrich_jobs.ts --verbose

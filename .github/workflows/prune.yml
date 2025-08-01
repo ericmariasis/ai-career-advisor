@@ -35,4 +35,4 @@ jobs:
         run: npm ci
 
       - name: Prune to newest 1 000
-        run: npx ts-node scripts/prune_latest.ts 1000
+        run: npx ts-node src/scripts/prune_latest.ts 1000

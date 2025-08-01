@@ -1,10 +1,20 @@
 {
     "extends": "./tsconfig.json",
     "compilerOptions": {
+          /* where compiled JS goes */
+    "outDir": "dist",
+
+    /* where TS lives */
+    "rootDir": "src",
       // ↓ optional but nice: slightly stricter / faster for prod builds
       "noEmit": false,
       "allowImportingTsExtensions": false   // we don't need the “.ts” imports in prod
     },
+
+      /* Tell the compiler exactly which folders are “source” */
+  "include": [
+    "src/**/*",        /* server & libs */
+  ],
     "exclude": [
       "tests/**/*",           // all unit-test code
       "vitest.config.mts",    // vitest config file

@@ -42,7 +42,7 @@ if (DRY_RUN) console.log('🛈  DRY‑RUN: no OpenAI calls, no Algolia writes\n'
 import algoliasearch, { SearchClient } from 'algoliasearch';
 import { createClient as createRedisClient } from 'redis';
 import { OpenAI } from 'openai';
-import { embedText } from '../src/lib/embed';
+import { embedText } from '../lib/embed';
 import pLimit from 'p-limit';
 import { z } from 'zod';
 

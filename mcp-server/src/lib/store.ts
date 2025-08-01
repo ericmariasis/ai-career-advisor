@@ -22,26 +22,24 @@ export async function toggleFavorite(
 
   const total = await redisClient.hLen(key);
 
+  const delta = save ? 1 : -1;
+
   // 2️⃣  fire-and-forget analytics event
   try {
-        await redisClient.xAdd(
-            STREAM_KEY,
-            '*',                       // auto-ID
-            {                          // 👈  record, not array
-              user:  userToken,
-              job:   objectID,
-              act:   save ? 'saved' : 'unsaved',
-              total: total.toString(),
-              ts:    Date.now().toString()
-            },
-            {                          // trim in the same call
-              TRIM: {
-                strategy: 'MAXLEN',
-                strategyModifier: '~',
-                threshold: STREAM_MAX
-              }
-            }
-          );
+    await redisClient.xAdd(
+      STREAM_KEY,          // key
+      '*',                 // auto-ID
+      {                    // message fields – **Record<string, string>**
+        user:  userToken,
+        job:   objectID,
+        act:   (save ? 1 : -1).toString(),  // stringify for Redis
+        total: total.toString(),
+        ts:    Date.now().toString()
+      },
+      {                    // trim (~10000 entries)
+        TRIM: { strategy: 'MAXLEN', strategyModifier: '~', threshold: STREAM_MAX }
+      }
+    );
   } catch (err) {
     console.error('[favorites] stream log failed', err);
     /* do NOT block the main request – just log the error */

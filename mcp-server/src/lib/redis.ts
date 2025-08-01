@@ -3,9 +3,14 @@
 // Lazy‑connected Redis client
 // Re‑uses the same instance across imports/hot‑reloads
 // ─────────────────────────────
+import { resolve } from 'node:path';
+import dotenv from 'dotenv';
+dotenv.config({ path: resolve(__dirname, '../../.env') }); 
+
 import { createClient, RedisClientType } from 'redis';
 
-const REDIS_URL = process.env.REDIS_URL || 'redis://localhost:6379';
+const REDIS_URL = process.env.REDIS_URL || 'redis://redis:6379';
+
 
 let client: RedisClientType | undefined;
 

@@ -1,7 +1,7 @@
 // scripts/prune_latest.ts
 import 'dotenv/config';
 import algoliasearch from 'algoliasearch';       // keep only the function
-import type { JobHit } from '../src/types'; // Assuming JobHit is defined here
+import type { JobHit } from '../types'; // Assuming JobHit is defined here
 
 async function main() {  
 

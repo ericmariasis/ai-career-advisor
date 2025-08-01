@@ -22,7 +22,7 @@ const stubEmbed = (txt: string) => {
     return Promise.resolve(v);
   };
 
-let proc: any;
+let proc: { kill: () => void } | null;
 
 beforeAll(async () => {
   _setEmbedder(stubEmbed);              // ← swap in stub before any calls

@@ -19,5 +19,9 @@ COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist          ./dist
 
+# copy the seed file for index initialization
+COPY jobs_seed.json ./
+
 ENV NODE_ENV=production
-CMD ["node", "dist/index.js"]
+# Run the ensure script first, then start the main server
+CMD ["sh", "-c", "node dist/scripts/ensureJobsIdx.js && node dist/index.js"]

@@ -8,7 +8,7 @@ import 'pdfjs-dist/legacy/build/pdf.worker.js';
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.js';
 
 /* 🔑 stop pdf‑js from looking for pdf.worker.js */
-pdfjs.GlobalWorkerOptions.disableWorker = true;
+(pdfjs.GlobalWorkerOptions as { disableWorker?: boolean }).disableWorker = true;
 
 export const runtime = 'nodejs';
 
@@ -21,7 +21,12 @@ async function pdfToText(buf: Buffer) {
     for (let p = 1; p <= doc.numPages; p++) {
       const page    = await doc.getPage(p);
       const content = await page.getTextContent();
-      out += content.items.map((i: any) => i.str ?? '').join(' ') + '\n';
+              out += content.items
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .filter((item: any) => item.str)
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .map((item: any) => item.str as string)
+          .join(' ') + '\n';
     }
     await doc.destroy();
     return out.trim();

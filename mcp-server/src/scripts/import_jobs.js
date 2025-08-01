@@ -1,9 +1,12 @@
-// scripts/import_jobs.js  (CommonJS version)
-const { createClient } = require('redis');
-const fs   = require('fs');
-const path = require('path');
+// scripts/import_jobs.js  (ESM version)
+import { createClient } from 'redis';
+import fs from 'fs';
+import path from 'path';
 
 // ---------- config ----------
+import { fileURLToPath } from 'url';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const FILE_PATH = path.join(__dirname, '..', 'jobs_seed.json'); // ../jobs_seed.json
 const ID_FIELD  = 'objectID';           // unique key in your JSON
 const DRY_RUN   = process.argv.includes('--dry-run');

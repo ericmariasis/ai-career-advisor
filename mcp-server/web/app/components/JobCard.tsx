@@ -1,4 +1,4 @@
-/* eslint-disable react/require-default-props */
+
 'use client';
 import { MouseEvent, useState } from 'react';
 import axios from 'axios';

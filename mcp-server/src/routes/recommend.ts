@@ -1,6 +1,7 @@
 // src/routes/recommend.ts
 import { Router, Request, Response } from 'express';
 import { redisConn, knnSearch } from '../lib/redisSearch';
+import { JobRecord, RedisSearchDoc } from '../types';
 
 const router = Router();
 
@@ -29,7 +30,7 @@ const tagFilter = (field: string, value: string) => {
 };
 
 /** drop the heavy vector and tack on the neighbour’s score */
-const lean = (doc: any, score: number) => {
+const lean = (doc: JobRecord | null, score: number): (Omit<JobRecord, 'embedding'> & { score: number }) | null => {
   if (!doc) return null;
   const { embedding, ...rest } = doc;
   return { ...rest, score };
@@ -40,7 +41,7 @@ router.get('/job/:id', async (req: Request, res: Response) => {
   const jobKey = `job:${req.params.id}`;
 
   /* 1️⃣ fetch the source job */
-  const job = (await r.json.get(jobKey, { path: '.' })) as any;
+  const job = (await r.json.get(jobKey, { path: '.' })) as JobRecord | null;
   if (!job) {
     return res.status(404).json({ error: 'job not found' });
   }

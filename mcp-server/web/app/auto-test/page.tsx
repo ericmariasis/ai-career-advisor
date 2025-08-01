@@ -2,11 +2,15 @@
 'use client';
 
 import { useEffect } from 'react';
-import { searchClient, indexName } from '../../lib/algolia';
+
+// Skip prerendering for this test page
+export const dynamic = 'force-dynamic';
 
 export default function Test() {
   useEffect(() => {
     (async () => {
+      // Dynamic import to prevent server-side evaluation
+      const { searchClient, indexName } = await import('../../lib/algolia');
       const { results } = await searchClient.search([
         { indexName, query: 'foo', params: { hitsPerPage: 1 } },
       ]);

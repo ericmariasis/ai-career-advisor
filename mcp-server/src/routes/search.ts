@@ -138,10 +138,10 @@ const facetCounts = async (field: string) => {
 };
 
 
-    const [companyFacet, locationFacet, tagFacet] = await Promise.all([
+    const [companyFacet, locationFacet, skillsFacet] = await Promise.all([
       facetCounts('company'),
       facetCounts('location'),
-      facetCounts('tags')
+      facetCounts('skills')
     ]);
 
     res.json({
@@ -153,7 +153,7 @@ const facetCounts = async (field: string) => {
       facets: {
         company:  companyFacet,
         location: locationFacet,
-        tags:     tagFacet
+        skills:   skillsFacet
       }
     });
   } catch (err) {

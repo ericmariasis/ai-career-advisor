@@ -12,6 +12,25 @@ services:
       - grafana-data:/var/lib/grafana
     depends_on:
       - redis
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    env_file:
+      - .env.docker
+    expose:
+      - "3000"
+    depends_on:
+      - server
+
+  nginx:
+    image: nginx:1.27-alpine
+    ports: ["3000:80"]           # 3000 becomes the single entry-point
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - web        # your Next.js app container (add later if missing)
+      - grafana
   server:                       # 👈 new
     build:
       context: .

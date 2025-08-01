@@ -1,8 +1,8 @@
 // scripts/upload_seed.js
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const algoliasearch = require('algoliasearch');   // ← function
+import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import algoliasearch from 'algoliasearch';
 
 const [, , jsonPath, indexName] = process.argv;
 

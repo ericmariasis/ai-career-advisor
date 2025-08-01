@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "next dev -H 0.0.0.0 -p 3000",
     "build": "next build",
-    "start": "next start",
+    "start": "next start -H 0.0.0.0 -p 3000",
     "lint": "next lint"
   },
   "dependencies": {
@@ -15,6 +15,7 @@
     "@heroicons/react": "^2.2.0",
     "algoliasearch": "^5.33.0",
     "axios": "^1.10.0",
+    "canvas": "^3.1.2",
     "mammoth": "^1.9.1",
     "next": "15.3.5",
     "pdf-parse": "^1.1.1",
@@ -31,6 +32,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "15.3.5",
+    "node-loader": "^2.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

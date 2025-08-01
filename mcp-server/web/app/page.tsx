@@ -1,6 +1,9 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+
 'use client';
 import { useState, useEffect } from 'react';
+
+// Skip prerendering due to algoliasearch client issues
+export const dynamic = 'force-dynamic';
 import type { Job } from './components/JobCard';
 import JobModal from './components/JobModal'; 
 import axios from 'axios';
@@ -78,7 +81,11 @@ export default function Home() {
   function handleToggle(id: string, saved: boolean) {
     setSaved((prev) => {
       const next = new Set(prev);
-      saved ? next.add(id) : next.delete(id);
+      if (saved) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
       return next;
     });
   }
@@ -147,12 +154,16 @@ export default function Home() {
                  type="checkbox"
                  className="mr-1"
                  checked={selectedLocations.has(loc)}
-                 onChange={e => {
-                   const next = new Set(selectedLocations);
-                   e.target.checked ? next.add(loc) : next.delete(loc);
-                   setSelectedLocations(next);
-                   // …
-                 }}
+                                 onChange={e => {
+                  const next = new Set(selectedLocations);
+                  if (e.target.checked) {
+                    next.add(loc);
+                  } else {
+                    next.delete(loc);
+                  }
+                  setSelectedLocations(next);
+                  // …
+                }}
                />
                {loc} <span className="text-gray-500">({count})</span>
              </label>
@@ -181,7 +192,11 @@ export default function Home() {
    checked={selectedIndustries.has(ind)}
    onChange={e => {
      const next = new Set(selectedIndustries);
-     e.target.checked ? next.add(ind) : next.delete(ind);
+     if (e.target.checked) {
+       next.add(ind);
+     } else {
+       next.delete(ind);
+     }
      setSelectedIndustries(next);
    }}
  />
@@ -274,7 +289,6 @@ export default function Home() {
                 key={job.objectID}
                 job={{ ...job, __position: page * 10 + idx + 1 }}
                 queryID={result.queryID}
-                position={page * 10 + idx + 1}
                 initiallySaved={savedSet.has(job.objectID)}     // ★ NEW
                 onToggle={handleToggle}                         // ★ NEW
                 onOpen={() => setSelectedJob(job)} 
@@ -312,12 +326,12 @@ export default function Home() {
     </p>
 
     <div className="grid gap-4 mt-2">
-      {resumeHits.map((hit, i) => (
+      {resumeHits.map((hit) => (
         <JobCard
           key={hit.objectID}
           job={hit}
           queryID={hit.__queryID ?? ''}
-          position={i + 1}
+          onOpen={() => setSelectedJob(hit)}
         />
       ))}
     </div>

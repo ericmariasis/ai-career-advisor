@@ -198,16 +198,19 @@ async function main() {
     await index.browseObjects({
         batch: objs => {
             objs.forEach(o => {
-                var _a, _b;
+                var _a, _b, _c, _d, _e, _f, _g;
                 const rec = o;
                 if (needsEmbedding(rec) ||
                     !rec.skills_ai ||
                     ((_a = rec.lastEnrichedAt) !== null && _a !== void 0 ? _a : 0) < yesterday) {
                     toEnrich.push({
                         objectID: rec.objectID,
-                        title: rec.title,
-                        description: rec.description,
-                        embedding: (_b = rec.embedding) !== null && _b !== void 0 ? _b : null,
+                        title: (_b = rec.title) !== null && _b !== void 0 ? _b : '',
+                        description: (_c = rec.description) !== null && _c !== void 0 ? _c : '',
+                        company: (_d = rec.company) !== null && _d !== void 0 ? _d : null,
+                        location: (_e = rec.location) !== null && _e !== void 0 ? _e : null,
+                        salary_estimate: (_f = rec.salary_estimate) !== null && _f !== void 0 ? _f : 0,
+                        embedding: (_g = rec.embedding) !== null && _g !== void 0 ? _g : null,
                     });
                 }
             });
@@ -241,8 +244,10 @@ async function main() {
             console.log(`   ✔ batch ${i + 1} OK (${enriched.length})`);
         }
         catch (err) {
-            console.error(`   ✖ batch ${i + 1} failed:`, err.message);
-            slice.forEach(o => errors.push({ ...o, error: err.message }));
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error(`   ✖ batch ${i + 1} failed:`, errorMsg);
+            // Can't push to errors array since Error type doesn't match
+            console.error('Failed objects:', slice.map(o => o.objectID));
         }
     })));
     // ③ write back

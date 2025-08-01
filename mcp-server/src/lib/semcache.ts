@@ -25,7 +25,7 @@ export async function getCachedAnswer(
   const blob  = Buffer.from(vec.buffer);           // pack for FT.PARAMS
   const query = `@task:{${task}}=>[KNN 1 @embedding $BLOB AS dist]`;
 
-  const res: any = await redis.ft.search(
+  const res: { total: number; documents: Array<{ id: string; value: Record<string, unknown> }> } = await redis.ft.search(
     'cacheIdx',
     query,
     {
@@ -37,11 +37,11 @@ export async function getCachedAnswer(
 
   if (res.total === 0) return null;
 
-  const dist  = parseFloat(res.documents[0].value.dist);
+  const dist  = parseFloat(res.documents[0].value.dist as string);
   const sim   = 1 / (1 + dist);
 
   return sim >= TAU
-    ? { answer: res.documents[0].value.answer, similarity: sim }
+    ? { answer: res.documents[0].value.answer as string, similarity: sim }
     : null;
 }
 

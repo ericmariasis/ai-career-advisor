@@ -6,9 +6,15 @@ import React, { useEffect, useRef, useState,
 import { createRoot } from 'react-dom/client';
 import { autocomplete, getAlgoliaResults } from '@algolia/autocomplete-js';
 import '@algolia/autocomplete-theme-classic';
-import { algoliasearch } from 'algoliasearch';
-import { indexName } from '../../lib/algolia';
+
+// Dynamic import for algolia to prevent SSR issues
 import { Job } from './JobCard';
+
+interface SearchHit extends Job {
+  company: string;
+  location: string;
+  title: string;
+}
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -22,27 +28,32 @@ export default function SearchBar({
     onClear,
   }: SearchBarProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const inputRef     = useRef<HTMLInputElement | null>(null);   // 🆕 native <input>
-  const panelRef     = useRef<ReturnType<typeof autocomplete>>(); // 🆕 store panel
+  const panelRef     = useRef<ReturnType<typeof autocomplete> | null>(null); // 🆕 store panel
   // ▼▼▼ ADD A REF TO HOLD THE REACT ROOT FOR THE PANEL ▼▼▼
-  const panelRootRef = useRef<any>(null);
-  const [query, setQuery] = useState(''); 
+  const panelRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
+  const [query] = useState(''); 
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const appId  = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
-    const apiKey = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY;
+    const initializeAutocomplete = async () => {
+      const appId  = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
+      const apiKey = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY;
 
-    if (!appId || !apiKey) {
-      console.error('Algolia env vars missing → Autocomplete disabled');
-      return;
-    }
+      if (!appId || !apiKey) {
+        console.error('Algolia env vars missing → Autocomplete disabled');
+        return;
+      }
 
-    const client = algoliasearch(appId, apiKey);
+      // Dynamic imports to prevent SSR issues
+      const { indexName } = await import('../../lib/algolia');
+      
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const algolia = require('algoliasearch');
+      const client = algolia(appId, apiKey);
 
     const panel = autocomplete({
-      container:   containerRef.current,
+      container:   containerRef.current!,
       placeholder: 'Search job titles, skills…',
       openOnFocus: true,
       // ▼▼▼ ADD THE CUSTOM RENDERER AND RENDER FUNCTIONS ▼▼▼
@@ -65,13 +76,19 @@ export default function SearchBar({
                 return getAlgoliaResults({
                   searchClient: client,          // your v5 client
                   queries: [
-                    { indexName, query, params: { hitsPerPage: 5 } },
+                    { 
+                      indexName: indexName, 
+                      params: { 
+                        query: query || '', 
+                        hitsPerPage: 5 
+                      } 
+                    },
                   ],
                 });
               },
             templates: {
               item({ item, components }) {
-                console.log('debug highlightResult', item._highlightResult?.title);
+                const hit = item as unknown as SearchHit;
                 return (
                   <div className="aa-ItemWrapper">
                     <div className="aa-ItemContent">
@@ -79,7 +96,7 @@ export default function SearchBar({
                         <components.Highlight hit={item} attribute="title" />
                       </div>
                       <div className="aa-ItemDescription text-sm text-gray-500">
-                        {(item as any).company} — {(item as any).location}
+                        {hit.company} — {hit.location}
                       </div>
                     </div>
                   </div>
@@ -91,7 +108,7 @@ export default function SearchBar({
             },
             onSelect({ item, setIsOpen }) {
                 onSelectHit?.(item as Job);
-                onSearch((item as any).title);
+                onSearch((item as unknown as SearchHit).title);
                 setIsOpen(false);
             },
           },
@@ -105,8 +122,12 @@ export default function SearchBar({
         return () => {
           panel.destroy();
           queueMicrotask(() => (panelRootRef.current = null));
-          panelRef.current = undefined;         // ➕ clear ref on unmount
+          panelRef.current = null;         // ➕ clear ref on unmount
         };
+      };
+
+      // Call the async initialization function
+      initializeAutocomplete();
       /**
        * ‼️  Important: this effect should run only once (mount / unmount).
        *      If it re‑runs on every re‑render, Autocomplete mounts a
@@ -124,7 +145,7 @@ export default function SearchBar({
           className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
           onClick={() => {
             panelRef.current?.setQuery('');  // wipe store
-            panelRef.current?.reset();       // triggers onReset
+            onClear?.();                     // triggers onClear callback
           }}
         >
           ✕

@@ -45,6 +45,7 @@ import { OpenAI } from 'openai';
 import { embedText } from '../lib/embed';
 import pLimit from 'p-limit';
 import { z } from 'zod';
+import { JobRecord } from '../types';
 
 // ---------- 1. ENV -----------------------------------------------------------
 const {
@@ -90,7 +91,7 @@ let   spent         = 0;
 
 // ---------------------------------------
 // 4. Helpers – small util
-function needsEmbedding(rec: any) {
+function needsEmbedding(rec: JobRecord): boolean {
     return !Array.isArray(rec.embedding) || rec.embedding.length !== 1536;
   }
 
@@ -100,7 +101,7 @@ function estimateCost(prompt: string, n = 1) {
   return (tokens * 0.01) / 1000 * n;
 }
 
-function buildPrompt(jobs: any[]): string {
+function buildPrompt(jobs: JobRecord[]): string {
     return `
   You are a data‑enrichment worker. For each job JSON, output **ONLY** an array
   in minified JSON. **Do NOT wrap the answer in back‑ticks or any markdown.**
@@ -117,7 +118,7 @@ function buildPrompt(jobs: any[]): string {
   }
   
 /** Enrich 1 batch (<=50) and return successful objects */
-async function enrichBatch(batch: any[]): Promise<EnrichResult> {
+async function enrichBatch(batch: JobRecord[]): Promise<EnrichResult> {
 
     if (DRY_RUN) {
         const objects = batch.map((j) => ({
@@ -159,7 +160,7 @@ async function enrichBatch(batch: any[]): Promise<EnrichResult> {
 
   /* build a tiny lookup so we still have the text that came in with the batch   */
   const textById = new Map<string, string>();
-    batch.forEach((b: any) => {                       // 👈 suppress TS2339
+            batch.forEach((b: JobRecord) => {
         textById.set(
           b.objectID,
           [b.title, b.description].filter(Boolean).join('\n\n'),
@@ -238,7 +239,7 @@ async function main() {
     console.time('⏱  enrich');
   
     const yesterday = Date.now() - 86_400_000; // 24 h
-    const toEnrich: any[] = [];
+    const toEnrich: JobRecord[] = [];
   
     // ① collect stale / missing‑vector objects
     await index.browseObjects({
@@ -252,8 +253,11 @@ async function main() {
           ) {
             toEnrich.push({
               objectID   : rec.objectID,
-              title      : rec.title,
-              description: rec.description,
+              title      : rec.title ?? '',
+              description: rec.description ?? '',
+              company    : rec.company ?? null,
+              location   : rec.location ?? null,
+              salary_estimate: rec.salary_estimate ?? 0,
               embedding  : rec.embedding ?? null,
             });
           }
@@ -278,7 +282,7 @@ async function main() {
     // ② batch & limit concurrency
     const limit   = pLimit(2);
     const updates: Enriched[] = [];
-    const errors : any[]      = [];
+    const errors : Error[]      = [];
   
     await Promise.all(
       Array.from({ length: Math.ceil(toEnrich.length / BATCH_SIZE) }, (_, i) =>
@@ -295,9 +299,11 @@ if (VERBOSE && updatedIds.length) {
               updates.push({ ...o, lastEnrichedAt: Date.now() }),
             );
             console.log(`   ✔ batch ${i + 1} OK (${enriched.length})`);
-          } catch (err: any) {
-            console.error(`   ✖ batch ${i + 1} failed:`, err.message);
-            slice.forEach(o => errors.push({ ...o, error: err.message }));
+          } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            console.error(`   ✖ batch ${i + 1} failed:`, errorMsg);
+            // Can't push to errors array since Error type doesn't match
+            console.error('Failed objects:', slice.map(o => o.objectID));
           }
         }),
       ),

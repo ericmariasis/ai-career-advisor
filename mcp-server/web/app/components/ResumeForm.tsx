@@ -115,7 +115,7 @@ const regenerateFeedback = () => {
   onChange={handleChange}
   onTextReady={(extracted) => {
     setText(extracted)                           // overwrite
-    handleChange({ target: { value: extracted } } as any)
+    handleChange({ target: { value: extracted } } as React.ChangeEvent<HTMLTextAreaElement>)
   }}
 />
 

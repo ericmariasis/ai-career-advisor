@@ -5,7 +5,7 @@ import axios from 'axios';
 import JobCard from './JobCard';
 import { Dialog, Transition } from '@headlessui/react';
 import aa, { getUserToken } from '../insightsClient';
-import type { Job } from '@/types';
+import type { Job } from './JobCard';
 
 interface Props {
   job: Job | null;
@@ -145,7 +145,7 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
                         key={s.objectID}
                         job={s}
                         queryID=""            // not from a search
-                        position={0}          // no ranking position here
+
                         initiallySaved={false}
                         onToggle={() => {}}
                         onOpen={() => {}}

@@ -1,11 +1,11 @@
-/* eslint-disable react-hooks/exhaustive-deps */
+
 'use client';
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import JobCard from '../components/JobCard';
 import JobModal from '../components/JobModal';
 import { getUserToken } from '../insightsClient';
-import type { Job } from '@/types';
+import type { Job } from '../components/JobCard';
 
 export default function SavedPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -39,7 +39,11 @@ export default function SavedPage() {
       });
       setSavedSet((prev) => {
         const next = new Set(prev);
-        save ? next.add(job.objectID) : next.delete(job.objectID);
+        if (save) {
+          next.add(job.objectID);
+        } else {
+          next.delete(job.objectID);
+        }
         return next;
       });
       setJobs((prev) => prev.filter((j) => j.objectID !== job.objectID));

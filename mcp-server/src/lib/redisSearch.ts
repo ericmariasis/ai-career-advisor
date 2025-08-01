@@ -42,8 +42,8 @@ export async function knnSearch(
   );
 
   // flatten to nice objects
-  return resp.documents.map((d: any) => ({
-    id: JSON.parse(d.value.id),
+  return resp.documents.map((d: { id: string; value: Record<string, unknown> }) => ({
+    id: JSON.parse(d.value.id as string),
     score: d.value.score !== undefined ? Number(d.value.score) : null
     // d.value.json is the whole Job JSON if you need it later
   }));

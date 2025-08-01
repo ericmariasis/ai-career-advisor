@@ -179,7 +179,7 @@ const hits = await knnSearch(resumeVec, 20);
 
 /* ---------- coaching feedback ---------- */
 router.post('/feedback', async (req, res) => {
-  const { resumeText } = req.body as { resumeText?: any };
+  const { resumeText } = req.body as { resumeText?: unknown };
   if (!resumeText) {
     return res.status(400).json({ error: 'Missing resumeText' });
   }

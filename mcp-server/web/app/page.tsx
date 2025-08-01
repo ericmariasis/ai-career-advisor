@@ -137,7 +137,7 @@ export default function Home() {
         search('', 0, '', salaryMin, salaryMax);
       }
   return (
-    <main className="max-w-4xl mx-auto p-6 space-y-6">
+    <main className="max-w-4xl mx-auto p-6 space-y-6 bg-white min-h-screen">
       {/* ★ NEW: Facet panels */}
       {result?.facets && (
         <div className="flex gap-8 mb-4">

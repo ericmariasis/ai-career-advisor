@@ -18,7 +18,6 @@ export default function SavedPage() {
     (async () => {
       try {
         const userToken = getUserToken();
-        console.log('🔥 SavedPage: getUserToken() returned:', userToken);
         const { data } = await axios.get<Job[]>(
           '/api/favorites/details',
           { params: { userToken } }

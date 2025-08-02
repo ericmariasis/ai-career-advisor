@@ -30,7 +30,6 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
   const fetchFavorites = useCallback(async () => {
     try {
       const userToken = getUserToken();
-      console.log('🔥 FavoritesContext: getUserToken() returned:', userToken);
       const response = await axios.get('/api/favorites', {
         params: { userToken }
       });
@@ -65,7 +64,6 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
     try {
       const jobIdStr = String(jobId); // Ensure string type
       const userToken = getUserToken();
-      console.log('🔥 FavoritesContext: toggleFavorite getUserToken() returned:', userToken);
       
       await axios.post('/api/favorites', {
         objectID: jobIdStr,

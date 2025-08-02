@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import aa from '../insightsServer'
-import { jobsIndex }      from '../lib//algolia'
-import { toggleFavorite, getFavorites } from '../lib/store'   // ← add loadDB
+import { getFavorites, toggleFavorite } from '../lib/store'
+import { redisConn } from '../lib/redisSearch'   // ← add loadDB
 
 const router = Router()
 
@@ -47,10 +47,12 @@ router.post('/', async (req, res) => {
     /* 3️⃣  (optional) lookup job for snack-bar title -------------- */
     let title: string | undefined
     try {
-      const { results } = await jobsIndex.getObjects<{ title?: string }>([
-        objectID,
-      ])
-      title = results[0]?.title
+      const redis = await redisConn();
+      const key = `job:${objectID}`;
+      const jobData = await redis.json.get(key, { path: '$.title' });
+      if (jobData && Array.isArray(jobData) && jobData[0]) {
+        title = String(jobData[0]);
+      }
     } catch {
       /* ignore lookup errors */
     }
@@ -79,7 +81,7 @@ router.get('/', async (req, res) => {
 
   /* -------------------------------------------------------------
  * GET /api/favorites/details?userToken=...
- * → returns the full job objects for the user’s saved IDs
+ * → returns the full job objects for the user's saved IDs
  * ------------------------------------------------------------*/
 router.get('/details', async (req, res) => {
     const { userToken } = req.query as { userToken?: string };
@@ -87,16 +89,30 @@ router.get('/details', async (req, res) => {
       return res.status(400).json({ error: 'userToken query-param required' });
     }
   
-    const ids = await getFavorites(userToken);          // LowDB helper you already have
-    if (ids.length === 0) return res.json([]);    // nothing saved
+    const ids = await getFavorites(userToken);
+    if (ids.length === 0) return res.json([]);
   
     try {
-      // bulk-fetch up to 1000 objects in one round-trip
-      const { results } = await jobsIndex.getObjects(ids);
-      // Algolia returns null for any missing IDs → filter them out
-      res.json(results.filter(Boolean));
+      const redis = await redisConn();
+      const jobs = [];
+      
+      // Fetch each job from Redis using the job:ID pattern
+      for (const id of ids) {
+        const key = `job:${id}`;
+        
+        try {
+          const jobData = await redis.json.get(key, { path: '$' });
+          if (jobData && Array.isArray(jobData) && jobData[0]) {
+            jobs.push(jobData[0]);
+          }
+        } catch (err) {
+          // Skip jobs that can't be found
+        }
+      }
+      
+      res.json(jobs);
     } catch (err) {
-      console.error(err);
+      console.error('🔥 Backend: Error:', err);
       res.status(500).json({ error: 'Failed to fetch saved jobs' });
     }
   });

@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import axios from 'axios';
+import { getUserToken } from '../insightsClient';
 
 interface FavoritesContextType {
   savedSet: Set<string>;
@@ -25,19 +26,13 @@ interface FavoritesProviderProps {
 export function FavoritesProvider({ children }: FavoritesProviderProps) {
   const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
 
-  // Get user token from localStorage
-  const getUserToken = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('userToken') || 'default-user';
-    }
-    return 'default-user';
-  };
-
   // Fetch favorites from server
   const fetchFavorites = useCallback(async () => {
     try {
+      const userToken = getUserToken();
+      console.log('🔥 FavoritesContext: getUserToken() returned:', userToken);
       const response = await axios.get('/api/favorites', {
-        params: { userToken: getUserToken() }
+        params: { userToken }
       });
       
       const favoriteIds = (response.data.ids || []).map((id: string) => String(id));
@@ -69,10 +64,12 @@ export function FavoritesProvider({ children }: FavoritesProviderProps) {
   const toggleFavorite = async (jobId: string, save: boolean) => {
     try {
       const jobIdStr = String(jobId); // Ensure string type
+      const userToken = getUserToken();
+      console.log('🔥 FavoritesContext: toggleFavorite getUserToken() returned:', userToken);
       
       await axios.post('/api/favorites', {
         objectID: jobIdStr,
-        userToken: getUserToken(),
+        userToken,
         save,
       });
       

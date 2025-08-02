@@ -18,6 +18,7 @@ export default function SavedPage() {
     (async () => {
       try {
         const userToken = getUserToken();
+        console.log('🔥 SavedPage: getUserToken() returned:', userToken);
         const { data } = await axios.get<Job[]>(
           '/api/favorites/details',
           { params: { userToken } }
@@ -32,10 +33,10 @@ export default function SavedPage() {
   /* unsave helper */
   async function toggleSave(job: Job, save: boolean) {
     try {
-      await toggleFavorite(job.objectID, save);
+      await toggleFavorite(String(job.objectID), save);
       // Remove from local jobs list if unsaved
       if (!save) {
-        setJobs((prev) => prev.filter((j) => j.objectID !== job.objectID));
+        setJobs((prev) => prev.filter((j) => String(j.objectID) !== String(job.objectID)));
       }
     } catch (err) {
       console.error(err);
@@ -63,7 +64,7 @@ export default function SavedPage() {
 
       <JobModal
         job={selected}
-        saved={selected ? savedSet.has(selected.objectID) : false}
+        saved={selected ? savedSet.has(String(selected.objectID)) : false}
         onClose={() => setSelected(null)}
         onToggleSave={toggleSave}
       />

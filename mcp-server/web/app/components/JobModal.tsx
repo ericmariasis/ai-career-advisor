@@ -145,9 +145,6 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
                         key={s.objectID}
                         job={s}
                         queryID=""            // not from a search
-
-                        initiallySaved={false}
-                        onToggle={() => {}}
                         onOpen={() => {}}
                       />
                     ))}

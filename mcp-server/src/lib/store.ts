@@ -15,10 +15,13 @@ export async function toggleFavorite(
   save:      boolean,
 ): Promise<number> {
   const key = `user:${userToken}:favs`;
+  
+  // Ensure objectID is a string (Redis requires string keys)
+  const objectIdStr = String(objectID);
 
   // 1️⃣  normal favourites logic (unchanged)
-  if (save) await redisClient.hSet(key, objectID, 1);
-  else      await redisClient.hDel(key, objectID);
+  if (save) await redisClient.hSet(key, objectIdStr, 1);
+  else      await redisClient.hDel(key, objectIdStr);
 
   const total = await redisClient.hLen(key);
 
@@ -30,14 +33,11 @@ export async function toggleFavorite(
       STREAM_KEY,          // key
       '*',                 // auto-ID
       {                    // message fields – **Record<string, string>**
-        user:  userToken,
-        job:   objectID,
+        user:  String(userToken),
+        job:   objectIdStr,
         act:   (save ? 1 : -1).toString(),  // stringify for Redis
         total: total.toString(),
         ts:    Date.now().toString()
-      },
-      {                    // trim (~10000 entries)
-        TRIM: { strategy: 'MAXLEN', strategyModifier: '~', threshold: STREAM_MAX }
       }
     );
   } catch (err) {

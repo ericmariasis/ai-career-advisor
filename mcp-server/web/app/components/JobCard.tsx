@@ -1,10 +1,10 @@
 
 'use client';
-import { MouseEvent, useState } from 'react';
-import axios from 'axios';
-import aa, { getUserToken } from '../insightsClient';        // ★ CHG
-import { HeartIcon as HeartSolid }   from '@heroicons/react/24/solid';
-import { HeartIcon as HeartOutline } from '@heroicons/react/24/outline';
+import { MouseEvent } from 'react';
+import aa from '../insightsClient';        // ★ CHG
+import { HeartIcon } from '@heroicons/react/24/solid';
+import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 export type Job = {
   objectID: string;
@@ -28,40 +28,27 @@ interface Props {
   job: Job;
     /** May be empty when card comes from the résumé matcher */
   queryID?: string;
-  initiallySaved?: boolean;           // ★ NEW
-  onToggle?: (id: string, saved: boolean) => void; // ★ NEW
   onOpen: () => void;
 }
 
 export default function JobCard({
   job,
   queryID,
-  initiallySaved = false,
-  onToggle,
   onOpen,
 }: Props) {
-  const [saved, setSaved] = useState(initiallySaved);
-  const userToken = getUserToken();
+  const { savedSet, toggleFavorite } = useFavorites();
+  const jobIdStr = String(job.objectID); // Ensure string type for comparison
+  const saved = savedSet.has(jobIdStr);
 
-  /* ---------- handle “Save” / “Unsave” ---------- */
+  /* ---------- handle "Save" / "Unsave" ---------- */
   async function toggleSave(e: React.MouseEvent) {
-    e.stopPropagation();        // don’t trigger card click
+    e.stopPropagation();        // don't trigger card click
     const next = !saved;
 
     try {
-      await axios.post('/api/favorites', {
-        objectID:  job.objectID,
-         ...(queryID  ? { queryID } : {}),
-         ...(job.__position
-            ? { position: job.__position }
-            : {}),
-        userToken,
-        save: next,
-      });
-      setSaved(next);
-      onToggle?.(job.objectID, next);
+      await toggleFavorite(jobIdStr, next);
     } catch (err) {
-      console.error(err);
+      console.error('Could not save job:', err);
       alert('Could not save job – please retry.');
     }
   }
@@ -93,12 +80,12 @@ export default function JobCard({
       <button
         onClick={toggleSave}
         title={saved ? 'Unsave' : 'Save job'}
-        className="absolute right-2 top-2 text-indigo-600 hover:text-indigo-800"
+        className="absolute right-2 top-2 text-indigo-600 hover:text-indigo-800 z-10 p-1 bg-white rounded-full shadow-sm"
       >
         {saved ? (
-          <HeartSolid className="w-5 h-5 fill-red-500" />
+          <HeartIcon className="w-5 h-5 text-red-500" />
         ) : (
-          <HeartOutline className="w-5 h-5" />
+          <HeartIconOutline className="w-5 h-5" />
         )}
       </button>
 

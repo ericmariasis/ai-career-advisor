@@ -6,13 +6,14 @@ import JobCard from '../components/JobCard';
 import JobModal from '../components/JobModal';
 import { getUserToken } from '../insightsClient';
 import type { Job } from '../components/JobCard';
+import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function SavedPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [savedSet, setSavedSet] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<Job | null>(null);
+  const { savedSet, toggleFavorite } = useFavorites();
 
-  /* fetch saved IDs + details */
+  /* fetch saved job details */
   useEffect(() => {
     (async () => {
       try {
@@ -22,31 +23,20 @@ export default function SavedPage() {
           { params: { userToken } }
         );
         setJobs(data);
-        setSavedSet(new Set(data.map((j) => j.objectID)));
       } catch (err) {
-        console.error(err);
+        console.error('Could not load saved jobs', err);
       }
     })();
-  }, []);
+  }, [savedSet]); // Re-fetch when savedSet changes
 
   /* unsave helper */
   async function toggleSave(job: Job, save: boolean) {
     try {
-      await axios.post('/api/favorites', {
-        objectID: job.objectID,
-        userToken: getUserToken(),
-        save,
-      });
-      setSavedSet((prev) => {
-        const next = new Set(prev);
-        if (save) {
-          next.add(job.objectID);
-        } else {
-          next.delete(job.objectID);
-        }
-        return next;
-      });
-      setJobs((prev) => prev.filter((j) => j.objectID !== job.objectID));
+      await toggleFavorite(job.objectID, save);
+      // Remove from local jobs list if unsaved
+      if (!save) {
+        setJobs((prev) => prev.filter((j) => j.objectID !== job.objectID));
+      }
     } catch (err) {
       console.error(err);
     }
@@ -66,8 +56,6 @@ export default function SavedPage() {
             key={job.objectID}
             job={{ ...job, __position: idx + 1 }}
             queryID=""                 // no search context
-            initiallySaved={savedSet.has(job.objectID)}
-            onToggle={(id, save) => toggleSave(job, save)}
             onOpen={() => setSelected(job)}
           />
         ))}

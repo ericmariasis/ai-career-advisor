@@ -11,7 +11,8 @@ import SearchBar  from './components/SearchBar';
 import JobCard    from './components/JobCard';
 import Pagination from './components/Pagination';
 import ResumeForm from './components/ResumeForm';
-import { getUserToken } from './insightsClient';
+
+import { useFavorites } from './contexts/FavoritesContext';
 
 type AlgoliaResponse = {
   hits: Job[];
@@ -32,7 +33,6 @@ export default function Home() {
   const [page,  setPage]      = useState(0);
   const [result, setResult]   = useState<AlgoliaResponse | null>(null);
   const [loading, setLoading] = useState(false);
-  const [savedSet, setSaved]  = useState<Set<string>>(new Set());
   const [resumeSkills, setResumeSkills] = useState<string[]>([]);
   const [resumeHits,   setResumeHits]   = useState<Job[]>([]);
   const [selectedJob,  setSelectedJob]  = useState<Job | null>(null);
@@ -40,6 +40,8 @@ export default function Home() {
   // ★ NEW: salary range state
   const [salaryMin, setSalaryMin] = useState('');
   const [salaryMax, setSalaryMax] = useState('');
+  
+  const { savedSet, toggleFavorite } = useFavorites();
 
 
   /* ---------------- search helper ---------------- */
@@ -77,34 +79,7 @@ export default function Home() {
     }
   }
 
-  /* bubble up save / unsave from JobCard */
-  function handleToggle(id: string, saved: boolean) {
-    setSaved((prev) => {
-      const next = new Set(prev);
-      if (saved) {
-        next.add(id);
-      } else {
-        next.delete(id);
-      }
-      return next;
-    });
-  }
 
-  async function toggleFavorite(job: Job, save: boolean) {
-    try {
-      await axios.post('/api/favorites', {
-        objectID: job.objectID,
-        // these two are optional when saving from a modal
-        queryID: job.__queryID ?? '',
-        position: job.__position ?? 0,
-        userToken: getUserToken(),
-        save,
-      });
-      handleToggle(job.objectID, save);           // keep global state in sync
-    } catch (err) {
-      console.error('Could not toggle favourite', err);
-    }
-  }
   
       // whenever tag or salary range change, reset to page 0
       useEffect(() => {
@@ -116,19 +91,7 @@ export default function Home() {
         search(query, 0, tag, salaryMin, salaryMax);
       }, [selectedLocations, selectedIndustries]);
 
-    useEffect(() => {
-        const fetchSaved = async () => {
-          try {
-            const { data } = await axios.get<{ ids: string[] }>('/api/favorites', {
-              params: { userToken: getUserToken() },
-            });
-            setSaved(new Set(data.ids));
-          } catch (err) {
-            console.error('Could not load favourites', err);
-          }
-        };
-        fetchSaved();
-      }, []);
+
       function clearSearch() {
         setQuery('');
         setTag('');
@@ -269,8 +232,6 @@ export default function Home() {
          onSelectHit={(hit) => {
               // hit already contains all attributes you need
               setSelectedJob(hit);
-              // ensure it's marked as saved or not:
-              handleToggle(hit.objectID, savedSet.has(hit.objectID));
             }}
             onClear={clearSearch}
       />
@@ -289,8 +250,6 @@ export default function Home() {
                 key={job.objectID}
                 job={{ ...job, __position: page * 10 + idx + 1 }}
                 queryID={result.queryID}
-                initiallySaved={savedSet.has(job.objectID)}     // ★ NEW
-                onToggle={handleToggle}                         // ★ NEW
                 onOpen={() => setSelectedJob(job)} 
               />
             ))}
@@ -341,7 +300,7 @@ export default function Home() {
   job={selectedJob}
   saved={selectedJob ? savedSet.has(selectedJob.objectID) : false}
   onClose={() => setSelectedJob(null)}
-  onToggleSave={toggleFavorite}
+  onToggleSave={(job, save) => toggleFavorite(job.objectID, save)}
 />
     </main>
   );

@@ -41,7 +41,11 @@ const PORT = process.env.PORT || 4000;
 export default app;
 
 // Initialize cache index before starting server
-ensureCacheIndex().then(() => {
+ensureCacheIndex().then(async () => {
+  // Seed initial favorites data
+  const { seedFavoritesData } = await import('./lib/seedFavorites.js');
+  await seedFavoritesData();
+  
   app.listen(PORT, () =>
     console.log(`✅  MCP server running on http://localhost:${PORT}`),
   );

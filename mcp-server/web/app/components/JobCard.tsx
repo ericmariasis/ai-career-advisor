@@ -8,7 +8,9 @@ import { CheckBadgeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useFavorites } from '../contexts/FavoritesContext';
 import { useJobDetails } from '../hooks/useJobDetails';
 import { fitColor } from '../lib/fitColor';
+import { SimilarJobsDrawer } from './SimilarJobsDrawer';
 import type { Job, JobEnriched } from '../types/job';
+import type { SimilarJob } from '../lib/fetchSimilar';
 
 // Export for backward compatibility
 export type { Job, JobEnriched };
@@ -32,12 +34,23 @@ export default function JobCard({
   // State to track when to fetch enriched data
   const [shouldFetch, setShouldFetch] = useState(false);
   
+  // State for similar jobs drawer
+  const [showSimilar, setShowSimilar] = useState(false);
+  
   // Lazy-load enriched job details
   const { data: enriched, loading } = useJobDetails(shouldFetch ? jobIdStr : undefined);
   
   // Trigger enriched data fetch on hover/focus
   function handleMouseEnter() {
     setShouldFetch(true);
+  }
+  
+  // Handle similar job selection
+  function handleSimilarJobSelect(similarJob: SimilarJob) {
+    // For now, just close the drawer. In a full app, this would navigate to the job
+    console.log('Selected similar job:', similarJob);
+    setShowSimilar(false);
+    // TODO: Navigate to the selected job or update the current view
   }
 
   /* ---------- handle "Save" / "Unsave" ---------- */
@@ -102,6 +115,20 @@ export default function JobCard({
         </p>
       )}
 
+      {/* Action buttons */}
+      <div className="mt-3 flex items-center gap-2">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowSimilar(true);
+          }}
+          className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+        >
+          <SparklesIcon className="h-3 w-3" />
+          Similar
+        </button>
+      </div>
+
       {/* Display base skills or enriched skills if available */}
       {enriched?.skills?.length ? (
         <div className="mt-2 flex flex-wrap gap-1">
@@ -163,6 +190,15 @@ export default function JobCard({
           <SparklesIcon className="mr-1 h-3 w-3 animate-spin" /> enriching&hellip;
         </span>
       )}
+
+      {/* Similar Jobs Drawer */}
+      <SimilarJobsDrawer
+        jobId={jobIdStr}
+        jobTitle={job.title}
+        open={showSimilar}
+        onClose={() => setShowSimilar(false)}
+        onSelectJob={handleSimilarJobSelect}
+      />
     </article>
   );
 }

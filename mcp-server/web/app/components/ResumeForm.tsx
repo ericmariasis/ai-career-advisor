@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { useDebouncedApi } from '@/hooks/useDebouncedApi';   // ← new file you added
-import type { Job } from './JobCard';
+import type { Job } from '../types/job';
 import ResumeInput from './ResumeInput';
 
 const MIN_CHARS = 20;

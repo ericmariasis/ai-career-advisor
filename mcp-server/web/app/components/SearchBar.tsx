@@ -8,7 +8,7 @@ import { autocomplete } from '@algolia/autocomplete-js';
 import '@algolia/autocomplete-theme-classic';
 
 
-import { Job } from './JobCard';
+import type { Job } from '../types/job';
 
 interface SearchHit extends Job {
   company: string;
@@ -91,7 +91,7 @@ export default function SearchBar({
               },
             },
             onSelect({ item, setIsOpen }) {
-                onSelectHit?.(item as Job);
+                onSelectHit?.(item as unknown as Job);
                 onSearch((item as unknown as SearchHit).title);
                 setIsOpen(false);
             },

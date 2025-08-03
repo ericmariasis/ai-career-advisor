@@ -5,15 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const insightsServer_1 = __importDefault(require("../insightsServer"));
-const algolia_1 = require("../lib//algolia");
-const store_1 = require("../lib/store"); // ← add loadDB
+const store_1 = require("../lib/store");
+const redisSearch_1 = require("../lib/redisSearch"); // ← add loadDB
 const router = (0, express_1.Router)();
 /** POST /api/favorites
  *  body: { objectID, queryID, position, userToken, save?: boolean }
  *  save defaults to true (= mark as favourite)
  */
 router.post('/', async (req, res) => {
-    var _a;
     try {
         const { objectID, userToken, save = true } = req.body;
         // queryID & position are optional﻿
@@ -48,10 +47,12 @@ router.post('/', async (req, res) => {
         /* 3️⃣  (optional) lookup job for snack-bar title -------------- */
         let title;
         try {
-            const { results } = await algolia_1.jobsIndex.getObjects([
-                objectID,
-            ]);
-            title = (_a = results[0]) === null || _a === void 0 ? void 0 : _a.title;
+            const redis = await (0, redisSearch_1.redisConn)();
+            const key = `job:${objectID}`;
+            const jobData = await redis.json.get(key, { path: '$.title' });
+            if (jobData && Array.isArray(jobData) && jobData[0]) {
+                title = String(jobData[0]);
+            }
         }
         catch {
             /* ignore lookup errors */
@@ -78,24 +79,36 @@ router.get('/', async (req, res) => {
 });
 /* -------------------------------------------------------------
 * GET /api/favorites/details?userToken=...
-* → returns the full job objects for the user’s saved IDs
+* → returns the full job objects for the user's saved IDs
 * ------------------------------------------------------------*/
 router.get('/details', async (req, res) => {
     const { userToken } = req.query;
     if (!userToken) {
         return res.status(400).json({ error: 'userToken query-param required' });
     }
-    const ids = await (0, store_1.getFavorites)(userToken); // LowDB helper you already have
+    const ids = await (0, store_1.getFavorites)(userToken);
     if (ids.length === 0)
-        return res.json([]); // nothing saved
+        return res.json([]);
     try {
-        // bulk-fetch up to 1000 objects in one round-trip
-        const { results } = await algolia_1.jobsIndex.getObjects(ids);
-        // Algolia returns null for any missing IDs → filter them out
-        res.json(results.filter(Boolean));
+        const redis = await (0, redisSearch_1.redisConn)();
+        const jobs = [];
+        // Fetch each job from Redis using the job:ID pattern
+        for (const id of ids) {
+            const key = `job:${id}`;
+            try {
+                const jobData = await redis.json.get(key, { path: '$' });
+                if (jobData && Array.isArray(jobData) && jobData[0]) {
+                    jobs.push(jobData[0]);
+                }
+            }
+            catch (err) {
+                // Skip jobs that can't be found
+            }
+        }
+        res.json(jobs);
     }
     catch (err) {
-        console.error(err);
+        console.error('🔥 Backend: Error:', err);
         res.status(500).json({ error: 'Failed to fetch saved jobs' });
     }
 });

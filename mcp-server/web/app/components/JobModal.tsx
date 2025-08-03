@@ -5,7 +5,7 @@ import axios from 'axios';
 import JobCard from './JobCard';
 import { Dialog, Transition } from '@headlessui/react';
 import aa, { getUserToken } from '../insightsClient';
-import type { Job } from './JobCard';
+import type { Job } from '../types/job';
 
 interface Props {
   job: Job | null;

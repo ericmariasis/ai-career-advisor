@@ -5,6 +5,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const redis_1 = __importDefault(require("../lib/redis"));
+/**
+ * Generate a consistent mock cultural fit score (0-1) based on job characteristics
+ * In production, this would come from AI analysis
+ */
+function generateMockFitScore(jobData) {
+    // Create a deterministic score based on job properties for consistency
+    const title = (jobData.title || '').toLowerCase();
+    const company = (jobData.company || '').toLowerCase();
+    const location = (jobData.location || '').toLowerCase();
+    const salary = jobData.salary_estimate || 0;
+    // Create a simple hash from job properties for consistency
+    let hash = 0;
+    const str = `${title}-${company}-${location}-${salary}`;
+    for (let i = 0; i < str.length; i++) {
+        const char = str.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    // Convert hash to a score between 0.6-0.95
+    const normalizedHash = Math.abs(hash) % 100;
+    return Math.round((0.6 + (normalizedHash / 100) * 0.35) * 100) / 100;
+}
 const router = (0, express_1.Router)();
 /** Build a valid RediSearch TAG filter.
  *   - quote a value if it contains space or comma
@@ -54,6 +76,11 @@ router.get('/', async (req, res) => {
     const offset = pageNum * perPage;
     // 1️⃣  start with the free‑text part (may be empty)
     let redisQuery = q.trim();
+    // 🔧 NEW: if query might be a skill, add skills search
+    if (redisQuery && redisQuery.length > 2) {
+        // Create a combined query: text search OR skills tag search
+        redisQuery = `(${redisQuery} | @skills:{${redisQuery}})`;
+    }
     // 2️⃣  append TAG / NUMERIC filters …
     if (company)
         redisQuery += buildTagFilter('company', [company]);
@@ -87,7 +114,12 @@ router.get('/', async (req, res) => {
         const docs = searchRes.documents;
         const hits = docs.map(d => {
             const parsed = JSON.parse(d.value.json);
-            return Array.isArray(parsed) ? parsed[0] : parsed; // unwrap `[ {...} ]`
+            const jobData = Array.isArray(parsed) ? parsed[0] : parsed; // unwrap `[ {...} ]`
+            // Add fit score to search results for sorting
+            return {
+                ...jobData,
+                fitScore: jobData.fitScore || generateMockFitScore(jobData)
+            };
         });
         // 2️⃣  helper to aggregate facet counts
         // --- helper with raw FT.AGGREGATE (avoids TS typing issues) ---
@@ -109,10 +141,10 @@ router.get('/', async (req, res) => {
             }
             return map;
         };
-        const [companyFacet, locationFacet, tagFacet] = await Promise.all([
+        const [companyFacet, locationFacet, skillsFacet] = await Promise.all([
             facetCounts('company'),
             facetCounts('location'),
-            facetCounts('tags')
+            facetCounts('skills')
         ]);
         res.json({
             query: q,
@@ -123,7 +155,7 @@ router.get('/', async (req, res) => {
             facets: {
                 company: companyFacet,
                 location: locationFacet,
-                tags: tagFacet
+                skills: skillsFacet
             }
         });
     }

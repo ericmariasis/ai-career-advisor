@@ -4,6 +4,7 @@ import searchRouter from './routes/search';
 import favoritesRouter  from './routes/favorites';
 import resumeRouter from './routes/resume';
 import recommendRouter from './routes/recommend';
+import jobsRouter from './routes/jobs';
 import { jobsIndex } from './lib/algolia'; // still used by /recommend
 import { ensureCacheIndex } from './lib/createCacheIndex';
 
@@ -28,6 +29,9 @@ app.use('/api/favorites',  favoritesRouter);  // ← NEW
 app.use('/api/resume',  resumeRouter);  // ← NEW
 
 app.use('/api/recommend', recommendRouter);
+
+/* ---------------- Jobs -------------- */
+app.use('/api/jobs', jobsRouter);
 
 app.post('/api/recommend/top5', async (_req, res) => {
   const { hits } = await jobsIndex.search('', { hitsPerPage: 5 });

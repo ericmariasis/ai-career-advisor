@@ -5,7 +5,7 @@ import axios from 'axios';
 import JobCard from '../components/JobCard';
 import JobModal from '../components/JobModal';
 import { getUserToken } from '../insightsClient';
-import type { Job } from '../components/JobCard';
+import type { Job } from '../types/job';
 import { useFavorites } from '../contexts/FavoritesContext';
 
 export default function SavedPage() {

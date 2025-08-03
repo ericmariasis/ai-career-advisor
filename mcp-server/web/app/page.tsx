@@ -1,16 +1,18 @@
 
 'use client';
 import { useState, useEffect } from 'react';
+// Removed useSearchParams to avoid Suspense boundary issue
 
 // Skip prerendering due to algoliasearch client issues
 export const dynamic = 'force-dynamic';
-import type { Job } from './components/JobCard';
+import type { Job } from './types/job';
 import JobModal from './components/JobModal'; 
 import axios from 'axios';
 import SearchBar  from './components/SearchBar';
 import JobCard    from './components/JobCard';
 import Pagination from './components/Pagination';
 import ResumeForm from './components/ResumeForm';
+// Simplified sort controls inline to avoid Suspense boundary issues
 
 import { useFavorites } from './contexts/FavoritesContext';
 
@@ -32,6 +34,9 @@ export default function Home() {
   const [query, setQuery]     = useState('');
   const [page,  setPage]      = useState(0);
   const [result, setResult]   = useState<AlgoliaResponse | null>(null);
+  
+  // State for sorting preference
+  const [sortByFit, setSortByFit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [resumeSkills, setResumeSkills] = useState<string[]>([]);
   const [resumeHits,   setResumeHits]   = useState<Job[]>([]);
@@ -243,16 +248,40 @@ export default function Home() {
           <p className="text-sm text-gray-500">
             {result.nbHits.toLocaleString()} jobs found
           </p>
+          
+          {/* Sort controls */}
+          <div className="mb-4 flex items-center gap-2">
+            <button
+              onClick={() => setSortByFit(!sortByFit)}
+              className={`${
+                sortByFit ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-700'
+              } relative inline-flex h-8 px-3 items-center rounded-full transition text-sm`}
+            >
+              {sortByFit ? '✓ ' : ''}Best fit first
+            </button>
+          </div>
 
           <div className="grid gap-4">
-            {result.hits.map((job, idx) => (
-              <JobCard
-                key={job.objectID}
-                job={{ ...job, __position: page * 10 + idx + 1 }}
-                queryID={result.queryID}
-                onOpen={() => setSelectedJob(job)} 
-              />
-            ))}
+            {(() => {
+              // Apply sorting if requested
+              const jobsToShow = sortByFit
+                ? [...result.hits].sort((a, b) => {
+                    // Sort by fit score (highest first)
+                    const aFit = a.fitScore ?? 0;
+                    const bFit = b.fitScore ?? 0;
+                    return bFit - aFit;
+                  })
+                : result.hits;
+              
+              return jobsToShow.map((job, idx) => (
+                <JobCard
+                  key={job.objectID}
+                  job={{ ...job, __position: page * 10 + idx + 1 }}
+                  queryID={result.queryID}
+                  onOpen={() => setSelectedJob(job)} 
+                />
+              ));
+            })()}
           </div>
 
                     {result.nbPages > 1 && (

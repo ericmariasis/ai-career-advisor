@@ -16,11 +16,13 @@ const STREAM_MAX = 10000; // keep roughly last 10k events
 /* ------------------------------------------------------------------ */
 async function toggleFavorite(userToken, objectID, save) {
     const key = `user:${userToken}:favs`;
+    // Ensure objectID is a string (Redis requires string keys)
+    const objectIdStr = String(objectID);
     // 1️⃣  normal favourites logic (unchanged)
     if (save)
-        await redis_1.default.hSet(key, objectID, 1);
+        await redis_1.default.hSet(key, objectIdStr, 1);
     else
-        await redis_1.default.hDel(key, objectID);
+        await redis_1.default.hDel(key, objectIdStr);
     const total = await redis_1.default.hLen(key);
     const delta = save ? 1 : -1;
     // 2️⃣  fire-and-forget analytics event
@@ -28,13 +30,11 @@ async function toggleFavorite(userToken, objectID, save) {
         await redis_1.default.xAdd(STREAM_KEY, // key
         '*', // auto-ID
         {
-            user: userToken,
-            job: objectID,
+            user: String(userToken),
+            job: objectIdStr,
             act: (save ? 1 : -1).toString(), // stringify for Redis
             total: total.toString(),
             ts: Date.now().toString()
-        }, {
-            TRIM: { strategy: 'MAXLEN', strategyModifier: '~', threshold: STREAM_MAX }
         });
     }
     catch (err) {

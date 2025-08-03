@@ -2,6 +2,31 @@ import { Router, Request, Response } from 'express';
 import redis from '../lib/redis';
 import type { Job } from '../types';
 
+/**
+ * Generate a consistent mock cultural fit score (0-1) based on job characteristics
+ * In production, this would come from AI analysis
+ */
+function generateMockFitScore(jobData: any): number {
+  // Create a deterministic score based on job properties for consistency
+  const title = (jobData.title || '').toLowerCase();
+  const company = (jobData.company || '').toLowerCase();
+  const location = (jobData.location || '').toLowerCase();
+  const salary = jobData.salary_estimate || 0;
+  
+  // Create a simple hash from job properties for consistency
+  let hash = 0;
+  const str = `${title}-${company}-${location}-${salary}`;
+  for (let i = 0; i < str.length; i++) {
+    const char = str.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+  
+  // Convert hash to a score between 0.6-0.95
+  const normalizedHash = Math.abs(hash) % 100;
+  return Math.round((0.6 + (normalizedHash / 100) * 0.35) * 100) / 100;
+}
+
 const router = Router();
 /** Build a valid RediSearch TAG filter.
  *   - quote a value if it contains space or comma
@@ -118,7 +143,13 @@ if (!redisQuery.trim()) redisQuery = '*';
        const docs = (searchRes as any).documents as RedisDoc[];
        const hits: Job[] = docs.map(d => {
           const parsed = JSON.parse(d.value.json);
-          return Array.isArray(parsed) ? parsed[0] : parsed;  // unwrap `[ {...} ]`
+          const jobData = Array.isArray(parsed) ? parsed[0] : parsed;  // unwrap `[ {...} ]`
+          
+          // Add fit score to search results for sorting
+          return {
+            ...jobData,
+            fitScore: jobData.fitScore || generateMockFitScore(jobData)
+          };
         });
 
     // 2️⃣  helper to aggregate facet counts

@@ -11,6 +11,7 @@ export interface Job {
   skills?: string[];
   description?: string;
   applyUrl?: string;
+  fitScore?: number;           // cultural fit score (0-1) for sorting
 }
   
   /** Algolia "hit" structure – a Job plus any extra Algolia metadata. */
@@ -51,4 +52,32 @@ export interface JobRecord {
   skills_ai?: string[];
   seniority_ai?: 'junior' | 'mid' | 'senior';
   industry_ai?: string;
+}
+
+/** AI-enriched job interface for frontend consumption */
+export interface JobEnriched {
+  objectID: string;
+  title: string;
+  company: string | null;
+  location: string | null;
+  salary_estimate?: number;
+  description?: string;
+  applyUrl?: string;
+  
+  // Core enrichment fields
+  skills: string[];
+  tags: string[];
+  fitScore: number;           // 0 – 1 cultural fit score
+  
+  // AI-enhanced fields
+  skills_ai?: string[];
+  seniority_ai?: 'junior' | 'mid' | 'senior';
+  industry_ai?: string;
+  
+  // Similar jobs (minimal structure for performance)
+  similar?: Pick<JobEnriched, 'objectID' | 'title' | 'company' | 'fitScore'>[];
+  
+  // Algolia/search metadata (optional)
+  __queryID?: string;
+  __position?: number;
 }

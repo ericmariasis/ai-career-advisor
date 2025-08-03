@@ -4,10 +4,10 @@
 import React, { useEffect, useRef, useState,        
                createElement, Fragment } from 'react';
 import { createRoot } from 'react-dom/client';
-import { autocomplete, getAlgoliaResults } from '@algolia/autocomplete-js';
+import { autocomplete } from '@algolia/autocomplete-js';
 import '@algolia/autocomplete-theme-classic';
 
-// Dynamic import for algolia to prevent SSR issues
+
 import { Job } from './JobCard';
 
 interface SearchHit extends Job {
@@ -37,20 +37,6 @@ export default function SearchBar({
     if (!containerRef.current) return;
 
     const initializeAutocomplete = async () => {
-      const appId  = process.env.NEXT_PUBLIC_ALGOLIA_APP_ID;
-      const apiKey = process.env.NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY;
-
-      if (!appId || !apiKey) {
-        console.error('Algolia env vars missing → Autocomplete disabled');
-        return;
-      }
-
-      // Dynamic imports to prevent SSR issues
-      const { indexName } = await import('../../lib/algolia');
-      
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const algolia = require('algoliasearch');
-      const client = algolia(appId, apiKey);
 
     const panel = autocomplete({
       container:   containerRef.current!,
@@ -72,28 +58,26 @@ export default function SearchBar({
         return [
           {
             sourceId: 'jobs',
-            getItems({ query }) {
-                return getAlgoliaResults({
-                  searchClient: client,          // your v5 client
-                  queries: [
-                    { 
-                      indexName: indexName, 
-                      params: { 
-                        query: query || '', 
-                        hitsPerPage: 5 
-                      } 
-                    },
-                  ],
-                });
+            async getItems({ query }) {
+                if (!query) return [];
+                
+                try {
+                  const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&hitsPerPage=5`);
+                  const data = await response.json();
+                  return data.hits || [];
+                } catch (error) {
+                  console.error('Search autocomplete failed:', error);
+                  return [];
+                }
               },
             templates: {
-              item({ item, components }) {
+              item({ item }) {
                 const hit = item as unknown as SearchHit;
                 return (
                   <div className="aa-ItemWrapper">
                     <div className="aa-ItemContent">
                       <div className="aa-ItemTitle">
-                        <components.Highlight hit={item} attribute="title" />
+                        {hit.title}
                       </div>
                       <div className="aa-ItemDescription text-sm text-gray-500">
                         {hit.company} — {hit.location}

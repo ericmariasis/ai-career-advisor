@@ -65,6 +65,12 @@ router.get('/', async (req: Request, res: Response) => {
 // 1️⃣  start with the free‑text part (may be empty)
 let redisQuery = q.trim();
 
+// 🔧 NEW: if query might be a skill, add skills search
+if (redisQuery && redisQuery.length > 2) {
+  // Create a combined query: text search OR skills tag search
+  redisQuery = `(${redisQuery} | @skills:{${redisQuery}})`;
+}
+
 // 2️⃣  append TAG / NUMERIC filters …
 if (company)  redisQuery += buildTagFilter('company',  [company]);
 if (location) redisQuery += buildTagFilter('location', [location]);

@@ -7,6 +7,7 @@ const express_1 = require("express");
 const insightsServer_1 = __importDefault(require("../insightsServer"));
 const store_1 = require("../lib/store");
 const redisSearch_1 = require("../lib/redisSearch"); // ← add loadDB
+const pubsub_1 = require("../lib/pubsub");
 const router = (0, express_1.Router)();
 /** POST /api/favorites
  *  body: { objectID, queryID, position, userToken, save?: boolean }
@@ -22,6 +23,8 @@ router.post('/', async (req, res) => {
         }
         /* 1️⃣  persist ------------------------------------------------ */
         const total = await (0, store_1.toggleFavorite)(userToken, objectID, save);
+        // Broadcast real-time update
+        await (0, pubsub_1.broadcastFavorite)(save ? 1 : -1, userToken, objectID);
         /* 2️⃣  send Insights event ------------------------------------ */
         if (save) {
             // ► user clicked  ⭐  — we record it as a conversion *after* a search

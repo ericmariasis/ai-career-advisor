@@ -2,6 +2,7 @@ import { Router } from 'express'
 import aa from '../insightsServer'
 import { getFavorites, toggleFavorite } from '../lib/store'
 import { redisConn } from '../lib/redisSearch'   // ← add loadDB
+import { broadcastFavorite } from '../lib/pubsub'
 
 const router = Router()
 
@@ -21,6 +22,9 @@ router.post('/', async (req, res) => {
 
     /* 1️⃣  persist ------------------------------------------------ */
     const total = await toggleFavorite(userToken, objectID, save)
+    
+    // Broadcast real-time update
+    await broadcastFavorite(save ? 1 : -1, userToken, objectID)
 
     /* 2️⃣  send Insights event ------------------------------------ */
     if (save) {

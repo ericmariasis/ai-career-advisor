@@ -12,6 +12,7 @@ import SearchBar  from './components/SearchBar';
 import JobCard    from './components/JobCard';
 import Pagination from './components/Pagination';
 import ResumeForm from './components/ResumeForm';
+import { LiveFavoritesCounter } from './components/LiveFavoritesCounter';
 // Simplified sort controls inline to avoid Suspense boundary issues
 
 import { useFavorites } from './contexts/FavoritesContext';
@@ -26,7 +27,7 @@ type AlgoliaResponse = {
 };
 
 export default function Home() {
-    const [selectedLocations,  setSelectedLocations]  = useState<Set<string>>(new Set());
+  const [selectedLocations,  setSelectedLocations]  = useState<Set<string>>(new Set());
     const [selectedIndustries, setSelectedIndustries] = useState<Set<string>>(new Set());
     // ★ NEW: control expand/collapse of long facet lists
     const [showAllLoc, setShowAllLoc] = useState(false);
@@ -101,11 +102,24 @@ export default function Home() {
         setQuery('');
         setTag('');
         setPage(0);
-        // salaryMin / salaryMax stay as-is so the user’s filters persist
+        // salaryMin / salaryMax stay as-is so the user's filters persist
         search('', 0, '', salaryMin, salaryMax);
       }
+
   return (
-    <main className="max-w-4xl mx-auto p-6 space-y-6 bg-white min-h-screen">
+    <div className="min-h-screen bg-white">
+      {/* Header with Live Counter */}
+      <header className="sticky top-0 z-40 flex items-center justify-between bg-white border-b px-6 py-4 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-900">AI Career Advisor</h1>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>Live favorites:</span>
+            <LiveFavoritesCounter initialCount={0} />
+          </div>
+        </div>
+      </header>
+      
+      <main className="max-w-4xl mx-auto p-6 space-y-6">
       {/* ★ NEW: Facet panels */}
       {result?.facets && (
         <div className="flex gap-8 mb-4">
@@ -331,6 +345,7 @@ export default function Home() {
   onClose={() => setSelectedJob(null)}
   onToggleSave={(job, save) => toggleFavorite(job.objectID, save)}
 />
-    </main>
+      </main>
+    </div>
   );
 }

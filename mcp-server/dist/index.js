@@ -10,6 +10,8 @@ const favorites_1 = __importDefault(require("./routes/favorites"));
 const resume_1 = __importDefault(require("./routes/resume"));
 const recommend_1 = __importDefault(require("./routes/recommend"));
 const jobs_1 = __importDefault(require("./routes/jobs"));
+const sse_favorites_1 = __importDefault(require("./routes/sse-favorites"));
+const favorites_total_1 = __importDefault(require("./routes/favorites-total"));
 const algolia_1 = require("./lib/algolia"); // still used by /recommend
 const createCacheIndex_1 = require("./lib/createCacheIndex");
 dotenv_1.default.config();
@@ -29,6 +31,10 @@ app.use('/api/resume', resume_1.default); // ← NEW
 app.use('/api/recommend', recommend_1.default);
 /* ---------------- Jobs -------------- */
 app.use('/api/jobs', jobs_1.default);
+/* ---------------- Real-time Events -------------- */
+app.use('/api/events', sse_favorites_1.default);
+/* ---------------- Favorites Total -------------- */
+app.use('/api/favorites', favorites_total_1.default);
 app.post('/api/recommend/top5', async (_req, res) => {
     const { hits } = await algolia_1.jobsIndex.search('', { hitsPerPage: 5 });
     res.json(hits);

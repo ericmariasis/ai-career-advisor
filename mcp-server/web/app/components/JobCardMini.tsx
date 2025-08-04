@@ -14,12 +14,12 @@ export function JobCardMini({ job, onSelect }: {
       className="block rounded-md p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-b-0"
     >
       <h3 className="font-medium text-sm">{job.title}</h3>
-      <p className="text-xs text-gray-600">
+      <p className="text-xs text-gray-800">
         {job.company || 'Unknown company'} • {job.location}
       </p>
       
       {job.salary_estimate && (
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-700 mt-1">
           Est. ${job.salary_estimate.toLocaleString()}
         </p>
       )}
@@ -32,7 +32,7 @@ export function JobCardMini({ job, onSelect }: {
       )}
       
       {typeof job.score === 'number' && (
-        <div className="text-[10px] text-gray-400 mt-1">
+        <div className="text-[10px] text-gray-700 mt-1">
           {Math.round(job.score * 100)}% similar
         </div>
       )}

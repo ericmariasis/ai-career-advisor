@@ -30,11 +30,14 @@ type AlgoliaResponse = {
 };
 
 export default function Home() {
-  const [selectedLocations,  setSelectedLocations]  = useState<Set<string>>(new Set());
+      const [selectedLocations,  setSelectedLocations]  = useState<Set<string>>(new Set());
     const [selectedIndustries, setSelectedIndustries] = useState<Set<string>>(new Set());
     // ★ NEW: control expand/collapse of long facet lists
     const [showAllLoc, setShowAllLoc] = useState(false);
     const [showAllInd, setShowAllInd] = useState(false);
+    // ★ NEW: search within filters
+    const [locationSearch, setLocationSearch] = useState('');
+    const [industrySearch, setIndustrySearch] = useState('');
   const [query, setQuery]     = useState('');
   const [page,  setPage]      = useState(0);
   const [result, setResult]   = useState<AlgoliaResponse | null>(null);
@@ -112,7 +115,7 @@ export default function Home() {
       <header className="sticky top-0 z-40 flex items-center justify-between bg-white border-b px-6 py-4 shadow-sm">
         <h1 className="text-2xl font-bold text-gray-900">AI Career Advisor</h1>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+                      <div className="flex items-center gap-2 text-sm text-gray-800">
             <span>Live favorites:</span>
             <LiveFavoritesCounter initialCount={0} />
           </div>
@@ -126,41 +129,65 @@ export default function Home() {
 
           {/* Location facet */}
           <div className="w-1/2">
-            <h4 className="font-semibold">Location</h4>
-            {Object.entries(result.facets.location ?? {})
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, showAllLoc ? undefined : 10)
-              .map(([loc, count]) => {
-                // Format location display - handle if it's an array or string
-                const displayLocation = Array.isArray(loc) 
-                  ? loc.join(', ') 
-                  : typeof loc === 'string' && loc.startsWith('[') && loc.endsWith(']')
-                    ? loc.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, '')).join(', ')
-                    : loc;
-                
-                return (
-                  <label key={loc} className="block text-sm">
-                    <input
-                      type="checkbox"
-                      className="mr-1"
-                      checked={selectedLocations.has(displayLocation)}
-                      onChange={e => {
-                        const next = new Set(selectedLocations);
-                        if (e.target.checked) {
-                          next.add(displayLocation);
-                        } else {
-                          next.delete(displayLocation);
-                        }
-                        setSelectedLocations(next);
-                      }}
-                    />
-                    {displayLocation} <span className="text-gray-500">({count})</span>
-                  </label>
-                );
-              })}
-            {Object.keys(result.facets.location ?? {}).length > 10 && (
+            <h4 className="font-semibold mb-2 text-gray-900">Location</h4>
+            
+            {/* Search box for locations */}
+            <input
+              type="text"
+              placeholder="Search locations..."
+              className="w-full text-xs px-2 py-1 border border-gray-300 rounded mb-2"
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+            />
+            
+            <div className="max-h-48 overflow-y-auto">
+              {Object.entries(result.facets.location ?? {})
+                .sort((a, b) => b[1] - a[1])
+                .filter(([loc]) => {
+                  // Format location display for filtering
+                  const displayLocation = Array.isArray(loc) 
+                    ? loc.join(', ') 
+                    : typeof loc === 'string' && loc.startsWith('[') && loc.endsWith(']')
+                      ? loc.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, '')).join(', ')
+                      : loc;
+                  
+                  return displayLocation.toLowerCase().includes(locationSearch.toLowerCase());
+                })
+                .slice(0, showAllLoc ? undefined : 10)
+                .map(([loc, count]) => {
+                  // Format location display - handle if it's an array or string
+                  const displayLocation = Array.isArray(loc) 
+                    ? loc.join(', ') 
+                    : typeof loc === 'string' && loc.startsWith('[') && loc.endsWith(']')
+                      ? loc.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, '')).join(', ')
+                      : loc;
+                  
+                  return (
+                    <label key={loc} className="block text-sm py-1 text-gray-800">
+                      <input
+                        type="checkbox"
+                        className="mr-2"
+                        checked={selectedLocations.has(displayLocation)}
+                        onChange={e => {
+                          const next = new Set(selectedLocations);
+                          if (e.target.checked) {
+                            next.add(displayLocation);
+                          } else {
+                            next.delete(displayLocation);
+                          }
+                          setSelectedLocations(next);
+                        }}
+                      />
+                      {displayLocation} <span className="text-gray-700">({count})</span>
+                    </label>
+                  );
+                })}
+            </div>
+            
+            {/* Show more button - only if not searching */}
+            {!locationSearch && Object.keys(result.facets.location ?? {}).length > 10 && (
               <button
-                className="mt-1 text-xs text-indigo-400 underline"
+                className="mt-2 text-xs text-indigo-500 hover:text-indigo-700 underline"
                 onClick={() => setShowAllLoc(x => !x)}
               >
                 {showAllLoc ? 'Show less…' : 'Show more…'}
@@ -170,32 +197,49 @@ export default function Home() {
 
           {/* Industry facet */}
           <div className="w-1/2">
-            <h4 className="font-semibold">Industry</h4>
-            {Object.entries(result.facets.industry ?? {})
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, showAllInd ? undefined : 10)
-              .map(([ind, count]) => (
-                <label key={ind} className="block text-sm">
- <input
-   type="checkbox"
-   className="mr-1"
-   checked={selectedIndustries.has(ind)}
-   onChange={e => {
-     const next = new Set(selectedIndustries);
-     if (e.target.checked) {
-       next.add(ind);
-     } else {
-       next.delete(ind);
-     }
-     setSelectedIndustries(next);
-   }}
- />
-               {ind} <span className="text-gray-500">({count})</span>
-             </label>
-              ))}
-            {Object.keys(result.facets.industry ?? {}).length > 10 && (
+            <h4 className="font-semibold mb-2 text-gray-900">Industry</h4>
+            
+            {/* Search box for industries */}
+            <input
+              type="text"
+              placeholder="Search industries..."
+              className="w-full text-xs px-2 py-1 border border-gray-300 rounded mb-2"
+              value={industrySearch}
+              onChange={(e) => setIndustrySearch(e.target.value)}
+            />
+            
+            <div className="max-h-48 overflow-y-auto">
+              {Object.entries(result.facets.industry ?? {})
+                .sort((a, b) => b[1] - a[1])
+                .filter(([ind]) => {
+                  return ind.toLowerCase().includes(industrySearch.toLowerCase());
+                })
+                .slice(0, showAllInd ? undefined : 10)
+                .map(([ind, count]) => (
+                  <label key={ind} className="block text-sm py-1 text-gray-800">
+                    <input
+                      type="checkbox"
+                      className="mr-2"
+                      checked={selectedIndustries.has(ind)}
+                      onChange={e => {
+                        const next = new Set(selectedIndustries);
+                        if (e.target.checked) {
+                          next.add(ind);
+                        } else {
+                          next.delete(ind);
+                        }
+                        setSelectedIndustries(next);
+                      }}
+                    />
+                    {ind} <span className="text-gray-700">({count})</span>
+                  </label>
+                ))}
+            </div>
+            
+            {/* Show more button - only if not searching */}
+            {!industrySearch && Object.keys(result.facets.industry ?? {}).length > 10 && (
               <button
-                className="mt-1 text-xs text-indigo-400 underline"
+                className="mt-2 text-xs text-indigo-500 hover:text-indigo-700 underline"
                 onClick={() => setShowAllInd(x => !x)}
               >
                 {showAllInd ? 'Show less…' : 'Show more…'}
@@ -206,7 +250,7 @@ export default function Home() {
         </div>
       )}
        <header className="flex items-baseline gap-6">
-   <h1 className="text-2xl font-bold">AI Job Explorer</h1>
+           <h1 className="text-2xl font-bold text-gray-900">AI Job Explorer</h1>
 
    {/* Saved-jobs link */}
    <a
@@ -237,7 +281,7 @@ export default function Home() {
       </div>
 
       <div className="flex items-center gap-2">
-  <label className="text-sm text-gray-400">Filter:</label>
+                  <label className="text-sm text-gray-700">Filter:</label>
   <select
     value={tag}
             onChange={(e) => {
@@ -265,7 +309,7 @@ export default function Home() {
                 onClear={clearSearch}
           />
           {/* Keyboard shortcut hint */}
-          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border px-1.5 py-0.5 text-xs text-gray-400 bg-gray-50 hidden md:block">
+                      <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border px-1.5 py-0.5 text-xs text-gray-600 bg-gray-50 hidden md:block">
             {typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl+K'}
           </kbd>
         </div>
@@ -278,9 +322,9 @@ export default function Home() {
 
       {result && (
         <>
-          <p className="text-sm text-gray-500">
-            {result.nbHits.toLocaleString()} jobs found
-          </p>
+                  <p className="text-sm text-gray-700">
+          {result.nbHits.toLocaleString()} jobs found
+        </p>
           
           {/* Sort controls */}
           <div className="mb-4 flex items-center gap-2">
@@ -312,7 +356,7 @@ export default function Home() {
               />
             ) : loading && jobsToShow.length === 0 ? (
               <div className="flex justify-center py-8">
-                <div className="text-gray-500">Searching...</div>
+                <div className="text-gray-700">Searching...</div>
               </div>
             ) : (
               <div className="grid gap-4">
@@ -341,7 +385,7 @@ export default function Home() {
       )}
       <hr className="my-6" />
 
-<h2 className="text-xl font-semibold">📄 Résumé matcher</h2>
+<h2 className="text-xl font-semibold text-gray-900">📄 Résumé matcher</h2>
 
 <ResumeForm
   onResult={(r) => {
@@ -352,7 +396,7 @@ export default function Home() {
 
 {resumeHits.length > 0 && (
   <>
-    <p className="mt-4 text-sm text-gray-500">
+              <p className="mt-4 text-sm text-gray-700">
       Extracted skills:&nbsp;
       {resumeSkills.join(', ')}
     </p>

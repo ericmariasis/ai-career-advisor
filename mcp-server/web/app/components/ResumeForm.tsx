@@ -120,7 +120,7 @@ const regenerateFeedback = () => {
 />
 
 {text.trim().length < MIN_CHARS && (
-  <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-700">
     Type at least {MIN_CHARS} characters to start matching jobs…
   </p>
 )}

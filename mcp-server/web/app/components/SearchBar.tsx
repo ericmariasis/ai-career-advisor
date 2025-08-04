@@ -102,7 +102,7 @@ export default function SearchBar({
                       <div className="aa-ItemTitle">
                         {hit.title}
                       </div>
-                      <div className="aa-ItemDescription text-sm text-gray-500">
+                      <div className="aa-ItemDescription text-sm text-gray-700">
                         {hit.company} — {hit.location}
                       </div>
                     </div>

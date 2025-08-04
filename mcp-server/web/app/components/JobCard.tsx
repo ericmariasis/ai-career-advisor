@@ -108,13 +108,13 @@ export default function JobCard({
         )}
       </button>
 
-      <h3 className="font-semibold text-lg pe-6">{job.title}</h3>
-      <p className="text-sm text-gray-600">
+      <h3 className="font-semibold text-lg pe-6 text-gray-900">{job.title}</h3>
+      <p className="text-sm text-gray-800">
         {job.company ?? 'Unknown company'} — {job.location}
       </p>
 
       {job.salary_estimate && (
-        <p className="text-sm mt-1">
+        <p className="text-sm mt-1 text-gray-800">
           Est. salary: ${job.salary_estimate.toLocaleString()}
         </p>
       )}
@@ -190,7 +190,7 @@ export default function JobCard({
 
       {/* Loading indicator */}
       {loading && (
-        <span className="mt-2 inline-flex items-center text-xs text-gray-400">
+        <span className="mt-2 inline-flex items-center text-xs text-gray-700">
           <SparklesIcon className="mr-1 h-3 w-3 animate-spin" /> enriching&hellip;
         </span>
       )}

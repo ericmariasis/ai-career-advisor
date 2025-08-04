@@ -79,10 +79,10 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
               {/* header */}
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <Dialog.Title className="text-xl font-semibold">
+                  <Dialog.Title className="text-xl font-semibold text-zinc-100">
                     {job.title}
                   </Dialog.Title>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-zinc-400">
                     {job.company} – {job.location}
                   </p>
                 </div>

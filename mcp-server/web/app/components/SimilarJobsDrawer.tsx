@@ -96,7 +96,7 @@ export function SimilarJobsDrawer({
                     {/* Subtitle */}
                     {jobTitle && (
                       <div className="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                        <p className="text-sm text-gray-600">
+                        <p className="text-sm text-gray-800">
                           Jobs similar to: <span className="font-medium">{jobTitle}</span>
                         </p>
                       </div>
@@ -107,7 +107,7 @@ export function SimilarJobsDrawer({
                       {loading && (
                         <div className="p-4 text-center">
                           <SparklesIcon className="h-8 w-8 mx-auto text-gray-400 animate-spin mb-2" />
-                          <p className="text-sm text-gray-500">Finding similar positions...</p>
+                          <p className="text-sm text-gray-700">Finding similar positions...</p>
                         </div>
                       )}
                       
@@ -120,7 +120,7 @@ export function SimilarJobsDrawer({
                       {!loading && !error && jobs.length === 0 && (
                         <div className="p-4 text-center">
                           <SparklesIcon className="h-8 w-8 mx-auto text-gray-300 mb-2" />
-                          <p className="text-sm text-gray-500">No similar openings found.</p>
+                          <p className="text-sm text-gray-700">No similar openings found.</p>
                           <p className="text-xs text-gray-400 mt-1">
                             Try searching for jobs with similar skills or titles.
                           </p>

@@ -14,6 +14,7 @@ import Pagination from './components/Pagination';
 import ResumeForm from './components/ResumeForm';
 import { LiveFavoritesCounter } from './components/LiveFavoritesCounter';
 import { Sparkline } from './components/Sparkline';
+import EmptyState from './components/EmptyState';
 
 // Simplified sort controls inline to avoid Suspense boundary issues
 
@@ -249,7 +250,7 @@ export default function Home() {
   </select>
 </div>
       <div className="flex items-center gap-4">
-        <div className="flex-1">
+        <div className="flex-1 relative">
           <SearchBar
             onSearch={(term) => search(term, 0, tag, salaryMin, salaryMax)}
             onSelectHit={(hit) => {
@@ -258,6 +259,10 @@ export default function Home() {
                 }}
                 onClear={clearSearch}
           />
+          {/* Keyboard shortcut hint */}
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border px-1.5 py-0.5 text-xs text-gray-400 bg-gray-50 hidden md:block">
+            {typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl+K'}
+          </kbd>
         </div>
         <Sparkline />
       </div>
@@ -284,28 +289,35 @@ export default function Home() {
             </button>
           </div>
 
-          <div className="grid gap-4">
-            {(() => {
-              // Apply sorting if requested
-              const jobsToShow = sortByFit
-                ? [...result.hits].sort((a, b) => {
-                    // Sort by fit score (highest first)
-                    const aFit = a.fitScore ?? 0;
-                    const bFit = b.fitScore ?? 0;
-                    return bFit - aFit;
-                  })
-                : result.hits;
-              
-              return jobsToShow.map((job, idx) => (
-                <JobCard
-                  key={job.objectID}
-                  job={{ ...job, __position: page * 10 + idx + 1 }}
-                  queryID={result.queryID}
-                  onOpen={() => setSelectedJob(job)} 
-                />
-              ));
-            })()}
-          </div>
+          {(() => {
+            // Apply sorting if requested
+            const jobsToShow = sortByFit
+              ? [...result.hits].sort((a, b) => {
+                  // Sort by fit score (highest first)
+                  const aFit = a.fitScore ?? 0;
+                  const bFit = b.fitScore ?? 0;
+                  return bFit - aFit;
+                })
+              : result.hits;
+            
+            return jobsToShow.length === 0 ? (
+              <EmptyState
+                title="No matching roles"
+                subtitle="Try changing keywords, location, or salary range to find more opportunities."
+              />
+            ) : (
+              <div className="grid gap-4">
+                {jobsToShow.map((job, idx) => (
+                  <JobCard
+                    key={job.objectID}
+                    job={{ ...job, __position: page * 10 + idx + 1 }}
+                    queryID={result.queryID}
+                    onOpen={() => setSelectedJob(job)} 
+                  />
+                ))}
+              </div>
+            );
+          })()}
 
                     {result.nbPages > 1 && (
             <Pagination

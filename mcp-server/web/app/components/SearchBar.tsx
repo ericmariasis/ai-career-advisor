@@ -42,6 +42,7 @@ export default function SearchBar({
       container:   containerRef.current!,
       placeholder: 'Search job titles, skills…',
       openOnFocus: true,
+      id: 'job-search-input',
       // ▼▼▼ ADD THE CUSTOM RENDERER AND RENDER FUNCTIONS ▼▼▼
       renderer: { createElement, Fragment },
       render({ children }, root) {
@@ -102,6 +103,14 @@ export default function SearchBar({
 
         // keep a handle so the clear‑button can call panelRef.current.reset()
         panelRef.current = panel;               // ➕ store reference
+        
+        // Add ID to the input element for keyboard shortcut targeting
+        setTimeout(() => {
+          const input = containerRef.current?.querySelector('input');
+          if (input) {
+            input.id = 'job-search-input';
+          }
+        }, 100);
     
         return () => {
           panel.destroy();

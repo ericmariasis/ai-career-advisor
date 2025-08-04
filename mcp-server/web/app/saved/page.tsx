@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import JobCard from '../components/JobCard';
 import JobModal from '../components/JobModal';
+import EmptyState from '../components/EmptyState';
 import { getUserToken } from '../insightsClient';
 import type { Job } from '../types/job';
 import { useFavorites } from '../contexts/FavoritesContext';
@@ -46,20 +47,23 @@ export default function SavedPage() {
     <main className="max-w-4xl mx-auto p-6 space-y-6 bg-white min-h-screen">
       <h1 className="text-2xl font-bold">Saved Jobs</h1>
 
-      {jobs.length === 0 && (
-        <p className="text-sm text-gray-400">No jobs saved yet.</p>
+                 {jobs.length === 0 ? (
+             <EmptyState
+               title="No favourites yet"
+               subtitle="Tap the ♥ on a job to save it here for later viewing."
+             />
+           ) : (
+        <div className="grid gap-4">
+          {jobs.map((job, idx) => (
+            <JobCard
+              key={job.objectID}
+              job={{ ...job, __position: idx + 1 }}
+              queryID=""                 // no search context
+              onOpen={() => setSelected(job)}
+            />
+          ))}
+        </div>
       )}
-
-      <div className="grid gap-4">
-        {jobs.map((job, idx) => (
-          <JobCard
-            key={job.objectID}
-            job={{ ...job, __position: idx + 1 }}
-            queryID=""                 // no search context
-            onOpen={() => setSelected(job)}
-          />
-        ))}
-      </div>
 
       <JobModal
         job={selected}

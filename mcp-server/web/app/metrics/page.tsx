@@ -4,7 +4,7 @@ export const metadata: Metadata = {
   title: 'Performance Dashboard',
   other: {
     'http-equiv': 'refresh',
-    content: '0; url=http://localhost:3001/d-solo/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&panelId=1&from=now-6h&to=now&kiosk'
+    content: '0; url=http://localhost:3001/d/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&from=now-6h&to=now&kiosk'
   }
 };
 
@@ -13,7 +13,7 @@ export default function MetricsPage() {
     <>
       <meta 
         httpEquiv="refresh" 
-        content="0; url=http://localhost:3001/d-solo/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&panelId=1&from=now-6h&to=now&kiosk" 
+        content="0; url=http://localhost:3001/d/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&from=now-6h&to=now&kiosk" 
       />
       <div className="h-screen flex items-center justify-center bg-gray-900">
         <div className="text-center">
@@ -22,7 +22,7 @@ export default function MetricsPage() {
           <p className="text-gray-400 text-sm mt-2">
             If you are not redirected automatically, 
             <a 
-              href="http://localhost:3001/d-solo/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&panelId=1&from=now-6h&to=now&kiosk"
+              href="http://localhost:3001/d/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&from=now-6h&to=now&kiosk"
               className="text-blue-400 hover:underline ml-1"
             >
               click here

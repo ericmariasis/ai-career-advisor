@@ -4,6 +4,7 @@ import "./globals.css";
 import './insightsClient';
 import Navigation from './components/Navigation';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import { ToastContainer } from './components/Toast';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,7 @@ export default function RootLayout({
         <FavoritesProvider>
           <Navigation />
           {children}
+          <ToastContainer />
         </FavoritesProvider>
       </body>
     </html>

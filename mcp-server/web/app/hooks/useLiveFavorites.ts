@@ -8,15 +8,13 @@ export function useLiveFavorites(initial = 0) {
   useEffect(() => {
     async function fetchInitialCount() {
       try {
-        console.log('🔥 Fetching initial favorites count...');
+
         const res = await fetch('/api/favorites-stats/total');
-        console.log('🔥 Favorites API response:', res.status, res.ok);
+
         
         if (res.ok) {
           const data = await res.json();
-          console.log('🔥 Favorites API data:', data);
           const total = data.total || 0;
-          console.log('🔥 Setting initial favorites count to:', total);
           setCount(total);
         } else {
           console.error('Failed to fetch favorites total:', res.status, res.statusText);
@@ -30,7 +28,7 @@ export function useLiveFavorites(initial = 0) {
   }, []);
 
   useEffect(() => {
-    console.log('🔥 useLiveFavorites effect starting, initial:', initial);
+    
     
     const eventSource = new EventSource('/api/events/favorites');
     

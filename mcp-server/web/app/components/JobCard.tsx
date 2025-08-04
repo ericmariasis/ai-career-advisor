@@ -9,6 +9,7 @@ import { useFavorites } from '../contexts/FavoritesContext';
 import { useJobDetails } from '../hooks/useJobDetails';
 import { fitColor } from '../lib/fitColor';
 import { SimilarJobsDrawer } from './SimilarJobsDrawer';
+import { useFavToast } from '../hooks/useFavToast';
 import type { Job, JobEnriched } from '../types/job';
 import type { SimilarJob } from '../lib/fetchSimilar';
 
@@ -30,6 +31,7 @@ export default function JobCard({
   const { savedSet, toggleFavorite } = useFavorites();
   const jobIdStr = String(job.objectID); // Ensure string type for comparison
   const saved = savedSet.has(jobIdStr);
+  const favToast = useFavToast();
   
   // State to track when to fetch enriched data
   const [shouldFetch, setShouldFetch] = useState(false);
@@ -60,6 +62,8 @@ export default function JobCard({
 
     try {
       await toggleFavorite(jobIdStr, next);
+      // Show toast notification
+      favToast(next ? 'add' : 'remove', job.title);
     } catch (err) {
       console.error('Could not save job:', err);
       alert('Could not save job – please retry.');

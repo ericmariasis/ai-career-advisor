@@ -9,7 +9,7 @@ interface Props {
 export function LiveFavoritesCounter({ initialCount = 0 }: Props) {
   const { count, connected } = useLiveFavorites(initialCount);
 
-  console.log('🔥 LiveFavoritesCounter render:', { count, connected, initialCount });
+
 
   return (
     <div className="relative flex items-center">

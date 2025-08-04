@@ -6,11 +6,7 @@ export function Sparkline() {
   
   const { series, connected } = useSparkline();
   
-  console.log('📈 Sparkline render:', { 
-    dataPoints: series.length, 
-    connected,
-    totalActivity: series.reduce((sum, point) => sum + point[1], 0)
-  });
+
 
   return (
     <div className="flex items-center ml-3 opacity-70">

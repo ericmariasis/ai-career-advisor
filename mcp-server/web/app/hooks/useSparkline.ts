@@ -6,7 +6,7 @@ export function useSparkline() {
 
   async function fetchTrend() {
     try {
-      console.log('📈 Fetching sparkline trend data...');
+
       
       // Generate mock data for now (60 minutes of activity)
       const mockData: [number, number][] = [];
@@ -18,7 +18,7 @@ export function useSparkline() {
         mockData.push([timestamp, activity]);
       }
       
-      console.log('📈 Mock sparkline data generated:', mockData.length, 'points');
+      
       setSeries(mockData);
       
       // Also try to fetch real data as fallback

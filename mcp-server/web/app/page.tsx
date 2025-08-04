@@ -14,6 +14,7 @@ import Pagination from './components/Pagination';
 import ResumeForm from './components/ResumeForm';
 import { LiveFavoritesCounter } from './components/LiveFavoritesCounter';
 import { Sparkline } from './components/Sparkline';
+
 // Simplified sort controls inline to avoid Suspense boundary issues
 
 import { useFavorites } from './contexts/FavoritesContext';
@@ -260,6 +261,8 @@ export default function Home() {
         </div>
         <Sparkline />
       </div>
+
+
 
       {loading && <p>Loading…</p>}
 

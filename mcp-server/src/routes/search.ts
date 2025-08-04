@@ -199,42 +199,89 @@ const facetCounts = async (field: string) => {
   console.log(`🔍 Computing facets for field: ${field} with query: ${redisQuery}`);
   
   try {
-    // Try without DIALECT first
-    const raw = await redis.sendCommand([
-      'FT.AGGREGATE', 'jobsIdx', redisQuery,
-      'GROUPBY', '1', `@${field}`,
-      'REDUCE',  'COUNT', '0', 'AS', 'count',
-      'LIMIT', '0', '50'  // Limit to 50 results
-    ]) as unknown as any[];
-
-    console.log(`🔍 Raw facet result for ${field}:`, raw?.slice(0, 6)); // First few items
-
-    // Handle different response formats
     const map: Record<string, number> = {};
     
-    if (raw.length === 1) {
-      // Only total count returned - GROUPBY didn't work
-      console.log(`⚠️ No grouping for ${field}, only got total:`, raw[0]);
-      return {};
-    }
-    
-    // Expected format: [totalCount, ["field1", "value1", "count", count1], ["field2", "value2", "count", count2], ...]
-    for (let i = 1; i < raw.length; i++) {
-      const arr = raw[i] as any[];
-      if (arr && arr.length >= 4) {
-        const val = arr[1];
-        const count = Number(arr[3]);
-        if (val && !isNaN(count)) {
-          map[val] = count;
+    // For industry only, use the TAGVALS approach that we know works
+    if (field === 'industry') {
+      try {
+        const tagValues = await redis.sendCommand(['FT.TAGVALS', 'jobsIdx', field]) as string[];
+        console.log(`🔍 Found ${tagValues.length} ${field} tags`);
+        
+        for (const tagValue of tagValues.slice(0, 50)) {
+          try {
+            const countQuery = redisQuery === '*' ? `@${field}:{${tagValue}}` : `(${redisQuery}) @${field}:{${tagValue}}`;
+            const result = await redis.ft.search('jobsIdx', countQuery, { LIMIT: { from: 0, size: 0 } });
+            const count = (result as any).total;
+            if (count > 0) {
+              map[tagValue] = count;
+            }
+          } catch (err) {
+            console.log(`⚠️ Skipping ${field} tag: ${tagValue}`);
+          }
         }
+        
+        console.log(`🔍 Final facet map for ${field}:`, Object.keys(map).length, 'entries');
+        if (Object.keys(map).length > 0) {
+          console.log(`🔍 Sample entries:`, Object.entries(map).slice(0, 3));
+        }
+        return map;
+      } catch (err) {
+        console.log(`⚠️ TAGVALS failed for industry: ${err instanceof Error ? err.message : err}`);
       }
     }
     
-    console.log(`🔍 Final facet map for ${field}:`, Object.keys(map).length, 'entries');
-    if (Object.keys(map).length > 0) {
-      console.log(`🔍 Sample entries:`, Object.entries(map).slice(0, 3));
+    // For all other fields (location, company, skills), use aggregate approach
+    try {
+      const searchResult = await redis.ft.search('jobsIdx', redisQuery, {
+        LIMIT: { from: 0, size: 0 }
+      });
+      
+      const totalHits = (searchResult as any).total;
+      if (totalHits === 0) {
+        console.log(`⚠️ No hits for query: ${redisQuery}`);
+        return {};
+      }
+      
+      // Get top values for this field using a different approach
+      // Search for the field and count unique values
+      const fieldSearchResult = await redis.ft.search('jobsIdx', redisQuery, {
+        LIMIT: { from: 0, size: Math.min(1000, totalHits) },
+        RETURN: ['1', field]
+      });
+      
+      const docs = (fieldSearchResult as any).documents as Array<{
+        id: string;
+        value: Record<string, string>;
+      }>;
+      
+      // Count occurrences of each field value
+      const valueCounts: Record<string, number> = {};
+      for (const doc of docs) {
+        const fieldValue = doc.value[field];
+        if (fieldValue && fieldValue.trim()) {
+          valueCounts[fieldValue] = (valueCounts[fieldValue] || 0) + 1;
+        }
+      }
+      
+      // Return top 50 values by count
+      const sortedValues = Object.entries(valueCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 50)
+        .reduce((acc, [key, count]) => {
+          acc[key] = count;
+          return acc;
+        }, {} as Record<string, number>);
+        
+      console.log(`🔍 Final facet map for ${field}:`, Object.keys(sortedValues).length, 'entries');
+      if (Object.keys(sortedValues).length > 0) {
+        console.log(`🔍 Sample entries:`, Object.entries(sortedValues).slice(0, 3));
+      }
+      return sortedValues;
+      
+    } catch (err) {
+      console.log(`⚠️ Search-based faceting failed for ${field}: ${err instanceof Error ? err.message : err}`);
+      return {};
     }
-    return map;
   } catch (error) {
     console.error(`❌ Facet aggregation failed for ${field}:`, error);
     return {};
@@ -242,9 +289,10 @@ const facetCounts = async (field: string) => {
 };
 
 
-    const [companyFacet, locationFacet, skillsFacet] = await Promise.all([
+    const [companyFacet, locationFacet, industryFacet, skillsFacet] = await Promise.all([
       facetCounts('company'),
       facetCounts('location'),
+      facetCounts('industry'),
       facetCounts('skills')
     ]);
 
@@ -257,6 +305,7 @@ const facetCounts = async (field: string) => {
       facets: {
         company:  companyFacet,
         location: locationFacet,
+        industry: industryFacet,
         skills:   skillsFacet
       }
     });

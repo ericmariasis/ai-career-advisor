@@ -46,7 +46,7 @@ export default function ResumeInput({ value, onChange, onTextReady }: Props) {
         onChange={onChange}
         rows={6}
         placeholder="Paste your résumé text here…"
-        className="w-full rounded border p-3 text-sm bg-transparent"
+        className="w-full rounded border p-3 text-sm bg-transparent text-gray-900"
       />
 
       {/* hidden native file‑picker */}

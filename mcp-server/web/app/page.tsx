@@ -135,7 +135,7 @@ export default function Home() {
             <input
               type="text"
               placeholder="Search locations..."
-              className="w-full text-xs px-2 py-1 border border-gray-300 rounded mb-2"
+              className="w-full text-xs px-2 py-1 border border-gray-300 rounded mb-2 text-gray-900"
               value={locationSearch}
               onChange={(e) => setLocationSearch(e.target.value)}
             />
@@ -203,7 +203,7 @@ export default function Home() {
             <input
               type="text"
               placeholder="Search industries..."
-              className="w-full text-xs px-2 py-1 border border-gray-300 rounded mb-2"
+              className="w-full text-xs px-2 py-1 border border-gray-300 rounded mb-2 text-gray-900"
               value={industrySearch}
               onChange={(e) => setIndustrySearch(e.target.value)}
             />

@@ -27,7 +27,7 @@ export function LiveFavoritesCounter({ initialCount = 0 }: Props) {
       )}
       
       {/* Debug count - always visible for testing */}
-      <span className="absolute -top-6 -left-8 text-xs text-gray-800 bg-yellow-200 px-2 py-1 rounded border z-10">
+      <span className="absolute -top-6 -left-20 text-xs text-gray-800 bg-yellow-200 px-2 py-1 rounded border z-10">
         Count: {count}
       </span>
       

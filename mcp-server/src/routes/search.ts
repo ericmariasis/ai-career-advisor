@@ -39,8 +39,8 @@ const buildTagFilter = (field: string, values: string[]) => {
   if (!values.length) return '';
 
   const tokens = values.map(v => {
-    const esc = v.replace(/(["\\])/g, '\\$1');    // escape " and \
-    return /[,\s]/.test(esc) ? `"${esc}"` : esc; // quote if needed
+    // For TAG fields, escape commas and spaces with backslashes
+    return v.replace(/([,\s\\])/g, '\\$1');
   });
 
   return ` @${field}:{${tokens.join('|')}}`;
@@ -79,8 +79,13 @@ router.get('/', async (req: Request, res: Response) => {
     industry,
     tag = '',
     salaryMin = '',
-    salaryMax = ''
+    salaryMax = '',
+    facetFilters = ''
   } = req.query as Record<string, string | undefined>;
+
+  // Debug logging
+  console.log('🚀 SEARCH REQUEST:', new Date().toISOString());
+  console.log('🔥 Query params:', { q, facetFilters, location, industry, company });
 
   // validate / coerce pagination
   const pageNum  = Math.max(Number(page), 0);
@@ -100,6 +105,41 @@ if (redisQuery && redisQuery.length > 2) {
 if (company)  redisQuery += buildTagFilter('company',  [company]);
 if (location) redisQuery += buildTagFilter('location', [location]);
 if (industry) redisQuery += buildTagFilter('industry', [industry]);
+
+// Handle facetFilters parameter (array format: ["location:Seattle, WA", "industry:Tech"])
+if (facetFilters) {
+  try {
+    // Handle both array (from axios) and string (from curl) formats
+    let filters: string[];
+    if (Array.isArray(facetFilters)) {
+      filters = facetFilters;
+    } else if (typeof facetFilters === 'string') {
+      filters = JSON.parse(facetFilters) as string[];
+    } else {
+      filters = [];
+    }
+    
+    const locationFilters: string[] = [];
+    const industryFilters: string[] = [];
+    const companyFilters: string[] = [];
+    
+    filters.forEach(filter => {
+      if (filter.startsWith('location:')) {
+        locationFilters.push(filter.substring(9)); // Remove "location:" prefix
+      } else if (filter.startsWith('industry:')) {
+        industryFilters.push(filter.substring(9)); // Remove "industry:" prefix
+      } else if (filter.startsWith('company:')) {
+        companyFilters.push(filter.substring(8)); // Remove "company:" prefix
+      }
+    });
+    
+    if (locationFilters.length) redisQuery += buildTagFilter('location', locationFilters);
+    if (industryFilters.length) redisQuery += buildTagFilter('industry', industryFilters);
+    if (companyFilters.length) redisQuery += buildTagFilter('company', companyFilters);
+  } catch (e) {
+    console.warn('Failed to parse facetFilters:', facetFilters, e);
+  }
+}
 
 const tagList = tag.split(',').filter(Boolean);
 if (tagList.length) redisQuery += buildTagFilter('tags', tagList);
@@ -156,22 +196,49 @@ if (!redisQuery.trim()) redisQuery = '*';
         // --- helper with raw FT.AGGREGATE (avoids TS typing issues) ---
        // --- helper with raw FT.AGGREGATE (adds DIALECT 3) -----------------
 const facetCounts = async (field: string) => {
-  const raw = await redis.sendCommand([
-    'FT.AGGREGATE', 'jobsIdx', redisQuery,
-    'DIALECT', '3',                    // 👈  NEW
-    'GROUPBY', '1', `@${field}`,
-    'REDUCE',  'COUNT', '0', 'AS', 'count'
-  ]) as unknown as any[];
+  console.log(`🔍 Computing facets for field: ${field} with query: ${redisQuery}`);
+  
+  try {
+    // Try without DIALECT first
+    const raw = await redis.sendCommand([
+      'FT.AGGREGATE', 'jobsIdx', redisQuery,
+      'GROUPBY', '1', `@${field}`,
+      'REDUCE',  'COUNT', '0', 'AS', 'count',
+      'LIMIT', '0', '50'  // Limit to 50 results
+    ]) as unknown as any[];
 
-  // raw[0] = total groups, then repeating [ "field", value, "count", N ]
-  const map: Record<string, number> = {};
-  for (let i = 1; i < raw.length; i++) {
-    const arr   = raw[i] as any[];
-    const val   = arr[1];
-    const count = Number(arr[3]);
-    map[val] = count;
+    console.log(`🔍 Raw facet result for ${field}:`, raw?.slice(0, 6)); // First few items
+
+    // Handle different response formats
+    const map: Record<string, number> = {};
+    
+    if (raw.length === 1) {
+      // Only total count returned - GROUPBY didn't work
+      console.log(`⚠️ No grouping for ${field}, only got total:`, raw[0]);
+      return {};
+    }
+    
+    // Expected format: [totalCount, ["field1", "value1", "count", count1], ["field2", "value2", "count", count2], ...]
+    for (let i = 1; i < raw.length; i++) {
+      const arr = raw[i] as any[];
+      if (arr && arr.length >= 4) {
+        const val = arr[1];
+        const count = Number(arr[3]);
+        if (val && !isNaN(count)) {
+          map[val] = count;
+        }
+      }
+    }
+    
+    console.log(`🔍 Final facet map for ${field}:`, Object.keys(map).length, 'entries');
+    if (Object.keys(map).length > 0) {
+      console.log(`🔍 Sample entries:`, Object.entries(map).slice(0, 3));
+    }
+    return map;
+  } catch (error) {
+    console.error(`❌ Facet aggregation failed for ${field}:`, error);
+    return {};
   }
-  return map;
 };
 
 

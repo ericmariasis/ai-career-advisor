@@ -69,13 +69,15 @@ export default function Home() {
       selectedIndustries.forEach(ind => ff.push(`industry:${ind}`));
       if (tag) ff.push(`tags:${tag}`);
 
-            const { data } = await axios.get<AlgoliaResponse>('/api/search', {
+
+      
+      const { data } = await axios.get<AlgoliaResponse>('/api/search', {
                 params: {
                   q,
                   page,
                   tag,
                   hitsPerPage: 10,
-                  facetFilters: ff,
+                  facetFilters: JSON.stringify(ff),
                   salaryMin,
                   salaryMax,
                 },
@@ -98,7 +100,7 @@ export default function Home() {
       // ★ NEW: whenever the facet-sets change, re-run the search
       useEffect(() => {
         search(query, 0, tag, salaryMin, salaryMax);
-      }, [selectedLocations, selectedIndustries]);
+      }, [selectedLocations, selectedIndustries, query, tag, salaryMin, salaryMax]);
 
 
       function clearSearch() {
@@ -133,26 +135,34 @@ export default function Home() {
             {Object.entries(result.facets.location ?? {})
               .sort((a, b) => b[1] - a[1])
               .slice(0, showAllLoc ? undefined : 10)
-              .map(([loc, count]) => (
-                <label key={loc} className="block text-sm">
-               <input
-                 type="checkbox"
-                 className="mr-1"
-                 checked={selectedLocations.has(loc)}
-                                 onChange={e => {
-                  const next = new Set(selectedLocations);
-                  if (e.target.checked) {
-                    next.add(loc);
-                  } else {
-                    next.delete(loc);
-                  }
-                  setSelectedLocations(next);
-                  // …
-                }}
-               />
-               {loc} <span className="text-gray-500">({count})</span>
-             </label>
-              ))}
+              .map(([loc, count]) => {
+                // Format location display - handle if it's an array or string
+                const displayLocation = Array.isArray(loc) 
+                  ? loc.join(', ') 
+                  : typeof loc === 'string' && loc.startsWith('[') && loc.endsWith(']')
+                    ? loc.slice(1, -1).split(',').map(s => s.trim().replace(/"/g, '')).join(', ')
+                    : loc;
+                
+                return (
+                  <label key={loc} className="block text-sm">
+                    <input
+                      type="checkbox"
+                      className="mr-1"
+                      checked={selectedLocations.has(displayLocation)}
+                      onChange={e => {
+                        const next = new Set(selectedLocations);
+                        if (e.target.checked) {
+                          next.add(displayLocation);
+                        } else {
+                          next.delete(displayLocation);
+                        }
+                        setSelectedLocations(next);
+                      }}
+                    />
+                    {displayLocation} <span className="text-gray-500">({count})</span>
+                  </label>
+                );
+              })}
             {Object.keys(result.facets.location ?? {}).length > 10 && (
               <button
                 className="mt-1 text-xs text-indigo-400 underline"

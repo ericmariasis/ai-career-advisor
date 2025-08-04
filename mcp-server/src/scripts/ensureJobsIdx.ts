@@ -39,7 +39,7 @@ async function ensureJobsIndex() {
             AS: 'industry'
           },
           '$.location': {
-            type: 'TEXT',
+            type: 'TAG',
             AS: 'location'
           },
           '$.salary_estimate': {

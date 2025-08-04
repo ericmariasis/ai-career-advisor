@@ -13,6 +13,7 @@ import JobCard    from './components/JobCard';
 import Pagination from './components/Pagination';
 import ResumeForm from './components/ResumeForm';
 import { LiveFavoritesCounter } from './components/LiveFavoritesCounter';
+import { Sparkline } from './components/Sparkline';
 // Simplified sort controls inline to avoid Suspense boundary issues
 
 import { useFavorites } from './contexts/FavoritesContext';
@@ -246,14 +247,19 @@ export default function Home() {
     {/* add more if you have other industries/tags */}
   </select>
 </div>
-      <SearchBar
-        onSearch={(term) => search(term, 0, tag, salaryMin, salaryMax)}
-         onSelectHit={(hit) => {
-              // hit already contains all attributes you need
-              setSelectedJob(hit);
-            }}
-            onClear={clearSearch}
-      />
+      <div className="flex items-center gap-4">
+        <div className="flex-1">
+          <SearchBar
+            onSearch={(term) => search(term, 0, tag, salaryMin, salaryMax)}
+            onSelectHit={(hit) => {
+                  // hit already contains all attributes you need
+                  setSelectedJob(hit);
+                }}
+                onClear={clearSearch}
+          />
+        </div>
+        <Sparkline />
+      </div>
 
       {loading && <p>Loading…</p>}
 

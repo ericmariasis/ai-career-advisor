@@ -7,6 +7,7 @@ import recommendRouter from './routes/recommend';
 import jobsRouter from './routes/jobs';
 import sseFavoritesRouter from './routes/sse-favorites';
 import favoritesTotalRouter from './routes/favorites-total';
+import favoritesTrendRouter from './routes/favorites-trend';
 import { initializePubSub } from './lib/pubsub';
 import { jobsIndex } from './lib/algolia'; // still used by /recommend
 import { ensureCacheIndex } from './lib/createCacheIndex';
@@ -41,6 +42,9 @@ app.use('/api/events', sseFavoritesRouter);
 
 /* ---------------- Favorites Total -------------- */
 app.use('/api/favorites-stats', favoritesTotalRouter);
+
+/* ---------------- Favorites Trend -------------- */
+app.use('/api/favorites-trend', favoritesTrendRouter);
 
 app.post('/api/recommend/top5', async (_req, res) => {
   const { hits } = await jobsIndex.search('', { hitsPerPage: 5 });

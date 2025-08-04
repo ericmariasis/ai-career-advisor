@@ -25,6 +25,19 @@ router.post('/', async (req, res) => {
     
     // Broadcast real-time update
     await broadcastFavorite(save ? 1 : -1, userToken, objectID)
+    
+    /* 1️⃣.5  store activity for trending data ---------------------- */
+    try {
+      const redis = await redisConn();
+      await redis.xAdd('favorites_activity', '*', {
+        'act': save ? '1' : '-1',
+        'user': userToken,
+        'job': objectID
+      });
+      console.log(`📈 Added activity to stream: ${save ? '+1' : '-1'} for job ${objectID}`);
+    } catch (err) {
+      console.error('Failed to write activity stream:', err);
+    }
 
     /* 2️⃣  send Insights event ------------------------------------ */
     if (save) {

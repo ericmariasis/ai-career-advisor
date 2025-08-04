@@ -30,6 +30,20 @@ export async function initializePubSub() {
   await getPubClient();
   await getSubClient();
   console.log('📡 Pub/Sub system initialized');
+  
+  // Start periodic tick messages for real-time sparkline updates
+  setInterval(async () => {
+    try {
+      const client = await getPubClient();
+      await client.publish('favorites', JSON.stringify({ 
+        type: 'tick', 
+        timestamp: Date.now() 
+      }));
+      console.log('🔔 Sent periodic tick message');
+    } catch (error) {
+      console.error('Failed to send tick message:', error);
+    }
+  }, 60_000); // Every 60 seconds
 }
 
 export async function broadcastFavorite(delta: 1 | -1, userId?: string, jobId?: string) {

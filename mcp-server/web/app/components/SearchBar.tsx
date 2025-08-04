@@ -31,7 +31,8 @@ export default function SearchBar({
   const panelRef     = useRef<ReturnType<typeof autocomplete> | null>(null); // 🆕 store panel
   // ▼▼▼ ADD A REF TO HOLD THE REACT ROOT FOR THE PANEL ▼▼▼
   const panelRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
-  const [query] = useState(''); 
+  const [query] = useState('');
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -54,6 +55,27 @@ export default function SearchBar({
             /* fire parent reset when we clear */
       onReset() {
         onClear?.();                               // ➕ notify page
+      },
+      /* fire parent search when user submits */
+      onSubmit({ state }) {
+        const query = state.query.trim();
+        if (query) {
+          onSearch(query);                         // ➕ trigger main search
+        }
+      },
+      /* fire parent search as user types (debounced) */
+      onStateChange({ state }) {
+        const query = state.query.trim();
+        
+        // Clear existing timeout
+        if (searchTimeoutRef.current) {
+          clearTimeout(searchTimeoutRef.current);
+        }
+        
+        // Set new timeout for debounced search
+        searchTimeoutRef.current = setTimeout(() => {
+          onSearch(query); // Trigger search even with empty query to show all results
+        }, 300); // 300ms debounce
       },
       getSources() {
         return [
@@ -113,6 +135,11 @@ export default function SearchBar({
         }, 100);
     
         return () => {
+          // Clear any pending search timeout
+          if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+          }
+          
           panel.destroy();
           queueMicrotask(() => (panelRootRef.current = null));
           panelRef.current = null;         // ➕ clear ref on unmount

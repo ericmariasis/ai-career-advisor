@@ -92,12 +92,7 @@ export default function Home() {
 
 
   
-      // whenever tag or salary range change, reset to page 0
-      useEffect(() => {
-        search('', 0, tag, salaryMin, salaryMax);
-      }, [tag, salaryMin, salaryMax]);
-  
-      // ★ NEW: whenever the facet-sets change, re-run the search
+      // ★ UNIFIED: single useEffect for all search triggers
       useEffect(() => {
         search(query, 0, tag, salaryMin, salaryMax);
       }, [selectedLocations, selectedIndustries, query, tag, salaryMin, salaryMax]);
@@ -310,11 +305,15 @@ export default function Home() {
                 })
               : result.hits;
             
-            return jobsToShow.length === 0 ? (
+            return jobsToShow.length === 0 && !loading ? (
               <EmptyState
                 title="No matching roles"
                 subtitle="Try changing keywords, location, or salary range to find more opportunities."
               />
+            ) : loading && jobsToShow.length === 0 ? (
+              <div className="flex justify-center py-8">
+                <div className="text-gray-500">Searching...</div>
+              </div>
             ) : (
               <div className="grid gap-4">
                 {jobsToShow.map((job, idx) => (

@@ -55,22 +55,20 @@ COPY --from=builder /app/.next/static ./.next/static
 # Copy standalone bundle (this puts server.js at /app/server.js)
 COPY --from=builder /app/.next/standalone ./
 
+# Install node_modules with package.json (includes canvas)
+COPY --from=builder /app/package*.json ./
+RUN npm ci --only=production
+
 # Rebuild native modules for the current platform
 RUN npm rebuild canvas --build-from-source
 
-# Remove Windows-compiled .node files and rebuild them for Linux
+# Remove any Windows-compiled .node files from the Next.js build
 RUN find /app/.next/server -name "*.node" -delete || true
 
-# The canvas rebuild should have created proper Linux binaries in node_modules
-# Copy the Linux-compiled canvas binary to where Next.js expects it
-RUN if [ -f /app/node_modules/canvas/build/Release/canvas.node ]; then \
-      cp /app/node_modules/canvas/build/Release/canvas.node /app/.next/server/chunks/canvas.node; \
-    fi
-
-# Create the expected directory structure for the API route
+# Create the expected directory structure for the API route and copy canvas.node
 RUN mkdir -p /app/.next/server/app/api/resume/upload/_next && \
-    if [ -f /app/.next/server/chunks/canvas.node ]; then \
-      ln -sf /app/.next/server/chunks/canvas.node /app/.next/server/app/api/resume/upload/_next/; \
+    if [ -f /app/node_modules/canvas/build/Release/canvas.node ]; then \
+      cp /app/node_modules/canvas/build/Release/canvas.node /app/.next/server/app/api/resume/upload/_next/; \
     fi
 
 ENV PORT=3000

@@ -6,6 +6,7 @@ import { HeartIcon } from '@heroicons/react/24/solid';
 import { HeartIcon as HeartIconOutline } from '@heroicons/react/24/outline';
 import { CheckBadgeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { useFavorites } from '../contexts/FavoritesContext';
+import { useResume } from '../contexts/ResumeContext';
 import { useJobDetails } from '../hooks/useJobDetails';
 import { fitColor } from '../lib/fitColor';
 import { SimilarJobsDrawer } from './SimilarJobsDrawer';
@@ -29,6 +30,7 @@ export default function JobCard({
   onOpen,
 }: Props) {
   const { savedSet, toggleFavorite } = useFavorites();
+  const { skills: resumeSkills } = useResume();
   const jobIdStr = String(job.objectID); // Ensure string type for comparison
   const saved = savedSet.has(jobIdStr);
   const favToast = useFavToast();
@@ -41,6 +43,11 @@ export default function JobCard({
   
   // Lazy-load enriched job details
   const { data: enriched, loading } = useJobDetails(shouldFetch ? jobIdStr : undefined);
+  
+  // Compute skill overlap for resume matching
+  const jobSkills = job.skills.map((s) => s.toLowerCase());
+  const overlaps = jobSkills.filter((s) => resumeSkills.includes(s));
+  const isGoodFit = overlaps.length >= 3; // threshold for good fit
   
   // Trigger enriched data fetch on hover/focus
   function handleMouseEnter() {
@@ -108,6 +115,13 @@ export default function JobCard({
         )}
       </button>
 
+      {/* Good fit ribbon */}
+      {isGoodFit && resumeSkills.length > 0 && (
+        <span className="absolute top-2 right-12 rounded bg-emerald-500/90 px-2 py-0.5 text-xs font-medium text-white shadow">
+          Good fit
+        </span>
+      )}
+
       <h3 className="font-semibold text-lg pe-6 text-gray-900">{job.title}</h3>
       <p className="text-sm text-gray-800">
         {job.company ?? 'Unknown company'} — {job.location}
@@ -133,30 +147,35 @@ export default function JobCard({
         </button>
       </div>
 
-      {/* Display base skills or enriched skills if available */}
-      {enriched?.skills?.length ? (
-        <div className="mt-2 flex flex-wrap gap-1">
-          {enriched.skills.slice(0, 5).map((s) => (
-            <span 
-              key={s}
-              className="rounded bg-indigo-50 px-2 py-0.5 text-xs text-indigo-600"
+      {/* Display base skills with resume matching highlights */}
+      <div className="mt-2 flex flex-wrap gap-1">
+        {job.skills.slice(0, 8).map((skill) => {
+          const hit = overlaps.includes(skill.toLowerCase());
+          return (
+            <span
+              key={skill}
+              className={
+                hit
+                  ? 'bg-emerald-100 text-emerald-700 border border-emerald-300 px-2 py-0.5 rounded text-xs font-medium'
+                  : 'bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs'
+              }
+              title={hit ? 'Matches your résumé' : undefined}
             >
-              {s}
+              {skill}
             </span>
-          ))}
-        </div>
-      ) : (
-        <ul className="flex flex-wrap gap-1 mt-2">
-          {job.skills.slice(0, 5).map((s) => (
-            <li
-              key={s}
-              className="bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded text-xs"
-            >
-              {s}
-            </li>
-          ))}
-        </ul>
-      )}
+          );
+        })}
+        
+        {/* Show enriched skills if available (without highlighting for now) */}
+        {enriched?.skills?.length && enriched.skills.slice(0, 3).map((s) => (
+          <span 
+            key={`enriched-${s}`}
+            className="rounded bg-purple-50 px-2 py-0.5 text-xs text-purple-600 border border-purple-200"
+          >
+            ✨ {s}
+          </span>
+        ))}
+      </div>
 
       {/* AI-enhanced skills (additional skills from AI) */}
       {enriched?.skills_ai?.length ? (

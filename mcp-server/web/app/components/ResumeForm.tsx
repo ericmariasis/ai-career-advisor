@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import { useDebouncedApi } from '@/hooks/useDebouncedApi';   // ← new file you added
+import { useResume } from '../contexts/ResumeContext';
 import type { Job } from '../types/job';
 import ResumeInput from './ResumeInput';
 
@@ -17,6 +18,8 @@ export default function ResumeForm({
   const [error, setError]   = useState<string | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  
+  const { setSkills } = useResume();
   
   // Debounced POST helper (600 ms by default)
   const sendResume = useDebouncedApi<{ resumeText: string }>('/api/resume', 600);
@@ -45,11 +48,16 @@ export default function ResumeForm({
       startTransition(() => {
         // debounced recommendations
         sendResume({ resumeText: val })
-          .then(res => res.json())
-          .then(({ skills, recommendations }) =>
-            onResult({ skills, hits: recommendations })       // transform key
-          )
-          .catch(() => {/* swallow for now */});
+          .then(res => {
+            const { skills, recommendations } = res.data; // Axios returns data in .data property
+            console.log('🎯 Resume skills extracted:', skills);
+            setSkills(skills.map((s: string) => s.toLowerCase())); // normalize and populate context
+            console.log('✅ Skills set in context:', skills.map((s: string) => s.toLowerCase()));
+            onResult({ skills, hits: recommendations });       // transform key
+          })
+          .catch((err) => {
+            console.error('❌ Resume processing failed:', err);
+          });
     
         // debounced advice
         sendFeedback({ resumeText: val })
@@ -75,11 +83,16 @@ const submit = () => {
   startTransition(() => {
     // 1️⃣  debounced résumé match
     sendResume({ resumeText: text })
-      .then(res => res.json())
-      .then(({ skills, recommendations }) =>
-        onResult({ skills, hits: recommendations })       // transform key
-      )
-      .catch(() => {});
+      .then(res => {
+        const { skills, recommendations } = res.data; // Axios returns data in .data property
+        console.log('🎯 Resume skills extracted (submit):', skills);
+        setSkills(skills.map((s: string) => s.toLowerCase())); // normalize and populate context
+        console.log('✅ Skills set in context (submit):', skills.map((s: string) => s.toLowerCase()));
+        onResult({ skills, hits: recommendations });       // transform key
+      })
+      .catch((err) => {
+        console.error('❌ Resume processing failed (submit):', err);
+      });
 
     // 2️⃣  debounced feedback
     sendFeedback({ resumeText: text })

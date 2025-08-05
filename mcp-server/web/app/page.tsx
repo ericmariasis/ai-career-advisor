@@ -23,6 +23,7 @@ import SuggestionsCarousel from './components/SuggestionsCarousel';
 // Simplified sort controls inline to avoid Suspense boundary issues
 
 import { useFavorites } from './contexts/FavoritesContext';
+import { useResume } from './contexts/ResumeContext';
 
 // Simple debounce utility for salary slider
 const useDebounce = <T extends unknown[]>(
@@ -81,6 +82,7 @@ export default function Home() {
   const [showScrollNav, setShowScrollNav] = useState(false);
   
   const { savedSet, toggleFavorite } = useFavorites();
+  const { skills: contextResumeSkills } = useResume();
 
   // Ref to track current search and prevent duplicates
   const currentSearchRef = useRef<string>('');
@@ -476,6 +478,30 @@ export default function Home() {
                   <p className="text-sm text-gray-700">
           {result.nbHits.toLocaleString()} jobs found
         </p>
+          
+          {/* Resume skill indicator or empty state */}
+          {contextResumeSkills.length > 0 ? (
+            <p className="text-sm text-emerald-700 bg-emerald-50 px-3 py-1 rounded-lg border border-emerald-200 inline-block">
+              📄 Matching against <b>{contextResumeSkills.length}</b> résumé skills
+            </p>
+          ) : (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 mb-4">
+              <p className="text-sm text-blue-700">
+                📄 <strong>Upload your résumé</strong> to see personalized matches with highlighted skills →{' '}
+                <button
+                  onClick={() => {
+                    document.getElementById('resume-matcher')?.scrollIntoView({ 
+                      behavior: 'smooth',
+                      block: 'start'
+                    });
+                  }}
+                  className="text-blue-600 hover:text-blue-800 underline font-medium"
+                >
+                  Try Resume Matcher
+                </button>
+              </p>
+            </div>
+          )}
           
           {/* Sort controls */}
           <div className="mb-4 flex items-center gap-2">

@@ -4,6 +4,7 @@ import "./globals.css";
 import './insightsClient';
 import Navigation from './components/Navigation';
 import { FavoritesProvider } from './contexts/FavoritesContext';
+import { ResumeProvider } from './contexts/ResumeContext';
 import { ToastContainer } from './components/Toast';
 import ClientLayout from './components/ClientLayout';
 
@@ -33,11 +34,13 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50`}
       >
         <FavoritesProvider>
-          <ClientLayout>
-            <Navigation />
-            {children}
-            <ToastContainer />
-          </ClientLayout>
+          <ResumeProvider>
+            <ClientLayout>
+              <Navigation />
+              {children}
+              <ToastContainer />
+            </ClientLayout>
+          </ResumeProvider>
         </FavoritesProvider>
       </body>
     </html>

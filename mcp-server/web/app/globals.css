@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import 'rc-slider/assets/index.css';
 
+/* Hide the built-in autocomplete clear button since we have our own */
+.aa-ClearButton {
+  display: none !important;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;

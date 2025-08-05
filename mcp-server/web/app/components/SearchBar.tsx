@@ -31,7 +31,7 @@ export default function SearchBar({
   const panelRef     = useRef<ReturnType<typeof autocomplete> | null>(null); // 🆕 store panel
   // ▼▼▼ ADD A REF TO HOLD THE REACT ROOT FOR THE PANEL ▼▼▼
   const panelRootRef = useRef<ReturnType<typeof createRoot> | null>(null);
-  const [query] = useState('');
+  const [query, setQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null); 
 
   useEffect(() => {
@@ -65,7 +65,10 @@ export default function SearchBar({
       },
       /* fire parent search as user types (debounced) */
       onStateChange({ state }) {
-        const query = state.query.trim();
+        const currentQuery = state.query.trim();
+        
+        // Update local state to show/hide clear button
+        setQuery(state.query);
         
         // Clear existing timeout
         if (searchTimeoutRef.current) {
@@ -74,7 +77,7 @@ export default function SearchBar({
         
         // Set new timeout for debounced search
         searchTimeoutRef.current = setTimeout(() => {
-          onSearch(query); // Trigger search even with empty query to show all results
+          onSearch(currentQuery); // Trigger search even with empty query to show all results
         }, 300); // 300ms debounce
       },
       getSources() {
@@ -163,13 +166,26 @@ export default function SearchBar({
       {query && (
         <button
           aria-label="Clear search"
-          className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+          className="absolute right-20 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors md:right-24"
           onClick={() => {
-            panelRef.current?.setQuery('');  // wipe store
+            panelRef.current?.setQuery('');  // wipe autocomplete state
+            setQuery('');                    // wipe local state
             onClear?.();                     // triggers onClear callback
           }}
         >
-          ✕
+          <svg
+            className="w-4 h-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M6 18L18 6M6 6l12 12"
+            />
+          </svg>
         </button>
       )}
     </div>

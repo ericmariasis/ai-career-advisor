@@ -12,6 +12,10 @@ export interface Job {
   applyUrl?: string;
   fitScore?: number;           // cultural fit score (0-1) for sorting
 
+  // AI-enhanced fields
+  seniority_ai?: 'Intern' | 'Junior' | 'Mid' | 'Senior' | 'Lead';
+  industry_ai?: string;
+
   // Algolia meta added in search results
   __queryID?: string;
   __position?: number;
@@ -24,10 +28,8 @@ export interface JobEnriched extends Job {
   tags: string[];
   fitScore: number;           // 0 – 1 cultural fit score
   
-  // AI-enhanced fields
+  // Additional AI-enhanced fields
   skills_ai?: string[];
-  seniority_ai?: 'junior' | 'mid' | 'senior';
-  industry_ai?: string;
   
   // Similar jobs (minimal structure for performance)
   similar?: Pick<JobEnriched, 'objectID' | 'title' | 'company' | 'fitScore'>[];

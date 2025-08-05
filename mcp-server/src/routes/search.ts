@@ -53,6 +53,51 @@ const buildTextFilter = (field: string, values: string[]): string => {
   const quotedValues = values.map(v => `"${v.replace(/"/g, '\\"')}"`);
   return ` @${field}:(${quotedValues.join('|')})`;
 };
+
+// Helper function to generate AI classifications for demo purposes
+const generateAIClassifications = (job: any) => {
+  const title = (job.title || '').toLowerCase();
+  const industry = job.industry || '';
+  
+  // Generate seniority_ai based on title keywords
+  let seniority_ai: string | undefined;
+  if (title.includes('intern') || title.includes('trainee')) {
+    seniority_ai = 'Intern';
+  } else if (title.includes('junior') || title.includes('entry') || title.includes('associate') || title.includes('assistant')) {
+    seniority_ai = 'Junior';
+  } else if (title.includes('senior') || title.includes('sr.') || title.includes('sr ')) {
+    seniority_ai = 'Senior';
+  } else if (title.includes('lead') || title.includes('manager') || title.includes('director') || title.includes('head') || title.includes('chief') || title.includes('vp')) {
+    seniority_ai = 'Lead';
+  } else if (title.includes('developer') || title.includes('analyst') || title.includes('specialist') || title.includes('engineer')) {
+    seniority_ai = 'Mid';
+  }
+  
+  // Generate industry_ai based on existing industry field
+  let industry_ai: string | undefined;
+  const industryLower = industry.toLowerCase();
+  if (industryLower.includes('financial') || industryLower.includes('insurance')) {
+    industry_ai = 'FinTech';
+  } else if (industryLower.includes('health')) {
+    industry_ai = 'HealthTech';
+  } else if (industryLower.includes('education')) {
+    industry_ai = 'EdTech';
+  } else if (industryLower.includes('software') || industryLower.includes('telecommunications')) {
+    industry_ai = 'SaaS';
+  } else if (industryLower.includes('retail') || industryLower.includes('consumer')) {
+    industry_ai = 'E-commerce';
+  } else if (industryLower.includes('media')) {
+    industry_ai = 'Gaming';
+  } else if (industryLower.includes('artificial intelligence')) {
+    industry_ai = 'AI/ML';
+  } else if (industryLower.includes('security')) {
+    industry_ai = 'Cybersecurity';
+  } else if (industryLower.includes('hardware') || industryLower.includes('engineering')) {
+    industry_ai = 'IoT';
+  }
+  
+  return { seniority_ai, industry_ai };
+};
 // ─────────────────────────────────────────────────────────
 // GET /api/search/job/:id   → fetch one job document
 // ─────────────────────────────────────────────────────────
@@ -88,7 +133,9 @@ router.get('/', async (req: Request, res: Response) => {
     tag = '',
     salaryMin = '',
     salaryMax = '',
-    facetFilters = ''
+    facetFilters = '',
+    seniority_ai = '',
+    industry_ai = ''
   } = req.query as Record<string, string | undefined>;
 
   // Debug logging
@@ -162,6 +209,46 @@ if (salaryMin || salaryMax) {
   redisQuery += ` @salary_estimate:[${min} ${max}]`;
 }
 
+// AI-based filtering (generate classifications on-the-fly for demo)
+if (seniority_ai) {
+  // Filter by job title keywords that suggest seniority level
+  const seniorityKeywords = {
+    'Intern': ['intern', 'internship', 'trainee'],
+    'Junior': ['junior', 'entry', 'associate', 'assistant'],
+    'Mid': ['developer', 'analyst', 'specialist', 'engineer'],
+    'Senior': ['senior', 'lead', 'principal', 'staff'],
+    'Lead': ['lead', 'manager', 'director', 'head', 'chief', 'vp', 'vice president']
+  };
+  
+  const keywords = seniorityKeywords[seniority_ai as keyof typeof seniorityKeywords];
+  if (keywords) {
+    const titleFilters = keywords.map(kw => `*${kw}*`).join('|');
+    redisQuery += ` @title:(${titleFilters})`;
+  }
+}
+
+if (industry_ai) {
+  // Map AI industry categories to existing industry tags
+  const industryMapping = {
+    'FinTech': ['financial services', 'insurance'],
+    'HealthTech': ['health services', 'health products'],
+    'EdTech': ['education'],
+    'SaaS': ['software', 'telecommunications'],
+    'E-commerce': ['retail', 'consumer services'],
+    'Gaming': ['media', 'software'],
+    'AI/ML': ['software', 'artificial intelligence'],
+    'Blockchain': ['software', 'financial services'],
+    'IoT': ['computer hardware', 'engineering'],
+    'Cybersecurity': ['security', 'software']
+  };
+  
+  const mappedIndustries = industryMapping[industry_ai as keyof typeof industryMapping];
+  if (mappedIndustries) {
+    const industryFilters = mappedIndustries.map(ind => ind.replace(/([,\s\\])/g, '\\$1')).join('|');
+    redisQuery += ` @industry:{${industryFilters}}`;
+  }
+}
+
 // 3️⃣  if everything is still empty, fall back to "*"
 if (!redisQuery.trim()) redisQuery = '*';
 
@@ -197,10 +284,14 @@ if (!redisQuery.trim()) redisQuery = '*';
           const parsed = JSON.parse(d.value.json);
           const jobData = Array.isArray(parsed) ? parsed[0] : parsed;  // unwrap `[ {...} ]`
           
-          // Add fit score to search results for sorting
+          // Generate AI classifications for demo
+          const aiClassifications = generateAIClassifications(jobData);
+          
+          // Add fit score and AI classifications to search results
           return {
             ...jobData,
-            fitScore: jobData.fitScore || generateMockFitScore(jobData)
+            fitScore: jobData.fitScore || generateMockFitScore(jobData),
+            ...aiClassifications
           };
         });
 

@@ -16,6 +16,7 @@ import { LiveFavoritesCounter } from './components/LiveFavoritesCounter';
 import { Sparkline } from './components/Sparkline';
 import EmptyState from './components/EmptyState';
 import FacetList, { type FacetBucket } from './components/FacetList';
+import FilterChips from './components/FilterChips';
 
 // Simplified sort controls inline to avoid Suspense boundary issues
 
@@ -35,6 +36,8 @@ export default function Home() {
     const [selectedIndustries, setSelectedIndustries] = useState<Set<string>>(new Set());
     const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
     const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+    const [selectedSeniority, setSelectedSeniority] = useState<string | null>(null);
+    const [selectedIndustryAI, setSelectedIndustryAI] = useState<string | null>(null);
     // ★ NEW: control expand/collapse of long facet lists
     const [showAllLoc, setShowAllLoc] = useState(false);
     const [showAllInd, setShowAllInd] = useState(false);
@@ -88,6 +91,8 @@ export default function Home() {
                   facetFilters: JSON.stringify(ff),
                   salaryMin,
                   salaryMax,
+                  seniority_ai: selectedSeniority,
+                  industry_ai: selectedIndustryAI,
                 },
               });
       setResult(data);
@@ -103,7 +108,7 @@ export default function Home() {
       // ★ UNIFIED: single useEffect for all search triggers
       useEffect(() => {
         search(query, 0, tag, salaryMin, salaryMax);
-      }, [selectedLocations, selectedIndustries, selectedCompanies, selectedSkills, query, tag, salaryMin, salaryMax]);
+      }, [selectedLocations, selectedIndustries, selectedCompanies, selectedSkills, selectedSeniority, selectedIndustryAI, query, tag, salaryMin, salaryMax]);
 
 
       function clearSearch() {
@@ -114,6 +119,8 @@ export default function Home() {
         setSelectedIndustries(new Set());
         setSelectedCompanies([]);
         setSelectedSkills([]);
+        setSelectedSeniority(null);
+        setSelectedIndustryAI(null);
         // salaryMin / salaryMax stay as-is so the user's filters persist
         search('', 0, '', salaryMin, salaryMax);
       }
@@ -296,6 +303,21 @@ export default function Home() {
             selected={selectedSkills}
             onChange={handleFacetChange}
             searchPlaceholder="Search skills..."
+          />
+
+          {/* ★ NEW: AI Filter Chips */}
+          <FilterChips
+            title="Seniority"
+            values={['Intern', 'Junior', 'Mid', 'Senior', 'Lead']}
+            selected={selectedSeniority}
+            onPick={setSelectedSeniority}
+          />
+
+          <FilterChips
+            title="Industry (AI)"
+            values={['FinTech', 'HealthTech', 'EdTech', 'SaaS', 'E-commerce', 'Gaming', 'AI/ML', 'Blockchain', 'IoT', 'Cybersecurity']}
+            selected={selectedIndustryAI}
+            onPick={setSelectedIndustryAI}
           />
 
         </div>

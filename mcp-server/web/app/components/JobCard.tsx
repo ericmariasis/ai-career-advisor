@@ -172,6 +172,23 @@ export default function JobCard({
         </div>
       ) : null}
 
+      {/* AI-predicted seniority and industry badges */}
+      {(job.seniority_ai || job.industry_ai) && (
+        <div className="mt-2 flex flex-wrap gap-2">
+          {job.seniority_ai && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-purple-50 px-2 py-0.5 text-xs font-medium text-purple-700 border border-purple-200">
+              ✨ {job.seniority_ai}
+            </span>
+          )}
+          
+          {job.industry_ai && (
+            <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+              {job.industry_ai}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Cultural fit score */}
       {typeof enriched?.fitScore === 'number' && (
         (() => {

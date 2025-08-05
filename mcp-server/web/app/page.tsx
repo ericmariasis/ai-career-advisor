@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 // Removed useSearchParams to avoid Suspense boundary issue
 
 // Skip prerendering due to algoliasearch client issues
@@ -18,6 +18,7 @@ import EmptyState from './components/EmptyState';
 import FacetList, { type FacetBucket } from './components/FacetList';
 import FilterChips from './components/FilterChips';
 import SalarySlider from './components/filters/SalarySlider';
+import SuggestionsCarousel from './components/SuggestionsCarousel';
 
 // Simplified sort controls inline to avoid Suspense boundary issues
 
@@ -69,11 +70,19 @@ export default function Home() {
   const [resumeSkills, setResumeSkills] = useState<string[]>([]);
   const [resumeHits,   setResumeHits]   = useState<Job[]>([]);
   const [selectedJob,  setSelectedJob]  = useState<Job | null>(null);
+  
+  // ★ NEW: Similar jobs fallback state
+  const [similarHits, setSimilarHits] = useState<Job[]>([]);
+  const [showSimilar, setShowSimilar] = useState(false);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
     const [tag, setTag] = useState('');
   // ★ NEW: salary range state
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 500000]);
   
   const { savedSet, toggleFavorite } = useFavorites();
+
+  // Ref to track current search and prevent duplicates
+  const currentSearchRef = useRef<string>('');
 
   // Debounced salary range handler to prevent excessive API calls
   const debouncedSalaryChange = useDebounce((range: [number, number]) => {
@@ -87,7 +96,21 @@ export default function Home() {
         page = 0,
         tag = ''
       ) => {
+    // Create unique search key to prevent duplicates
+    const searchKey = `${q}-${page}-${tag}`;
+    if (currentSearchRef.current === searchKey) {
+      console.log('⚠️ Duplicate search prevented:', searchKey);
+      return;
+    }
+    currentSearchRef.current = searchKey;
+    
     setLoading(true);
+    
+    // Reset similar state immediately when starting new search
+    setShowSimilar(false);
+    setSimilarHits([]);
+    setLoadingSimilar(false);
+    
     try {
             // build an array of facetFilters for location, industry, company, skills, and your existing tag
       const ff: string[] = [];
@@ -115,8 +138,44 @@ export default function Home() {
       setResult(data);
       setQuery(q);
       setPage(page);
+      
+      // ★ NEW: Fallback to similar jobs if no results and query exists
+      if (data.hits.length === 0 && q?.trim()) {
+        setLoadingSimilar(true);
+        setShowSimilar(true);
+        console.log('⏳ STARTING skeleton loading state for:', q);
+        try {
+          console.log('🔍 No results found, fetching similar jobs for:', q);
+          
+          // Use the real semantic search endpoint
+          const fallbackResponse = await axios.get<Job[]>('/api/recommend/suggestions', {
+            params: {
+              text: q,
+            },
+          });
+          
+          const suggestions = fallbackResponse.data || [];
+          console.log('✅ SKELETON LOADING COMPLETE, got', suggestions.length, 'suggestions');
+          setSimilarHits(suggestions);
+        } catch (err) {
+          console.error('Failed to fetch similar jobs:', err);
+          setSimilarHits([]);
+          setShowSimilar(false);
+        } finally {
+          console.log('🎯 ENDING skeleton loading state');
+          setLoadingSimilar(false);
+        }
+      } else {
+        setShowSimilar(false);
+        setSimilarHits([]);
+        setLoadingSimilar(false);
+      }
     } finally {
       setLoading(false);
+      // Clear the search key after a delay to allow the same search later
+      setTimeout(() => {
+        currentSearchRef.current = '';
+      }, 100);
     }
   }, [selectedLocations, selectedIndustries, selectedCompanies, selectedSkills, selectedSeniority, selectedIndustryAI, salaryRange]);
 
@@ -463,6 +522,16 @@ export default function Home() {
           )}
         </>
       )}
+      
+      {/* ★ NEW: Similar jobs fallback carousel */}
+      {showSimilar && (
+        <SuggestionsCarousel
+          hits={similarHits}
+          loading={loadingSimilar}
+          onJobSelect={(job) => setSelectedJob(job)}
+        />
+      )}
+      
       <hr className="my-6" />
 
 <h2 className="text-xl font-semibold text-gray-900">📄 Résumé matcher</h2>

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { extractSkills }        from '../utils/extractSkills';
-import { redisConn, knnSearch } from '../lib/redisSearch';
+import { redisConn } from '../lib/redisSearch';
 import { openai, OPENAI_MODEL } from '../openai';
 import { countTokens }          from '../lib/tokens';
 import { createHash } from 'crypto';
@@ -10,8 +10,7 @@ import { getCachedAnswer, putCachedAnswer } from '../lib/semcache';
 const router = Router();
 
 /* ---------- token‑guard constants ---------- */
-const EMBED_MODEL  = 'text-embedding-ada-002';
-const TOKEN_LIMIT  = 7_000;   // soft cap (hard = 8 192)
+const TOKEN_LIMIT  = 7_000;   // soft cap (hard = 8 192)
 const TRUNC_TARGET = 6_500;   // what we aim for after trimming
 
 /**  POST /api/resume  { resumeText: string } */
@@ -23,9 +22,9 @@ router.post('/', async (req, res) => {
     }
 
     /* ---------- 1. token guard ---------- */
-        // ☑️ Always work with a bona‑fide string
+        // ☑️ Always work with a bona‑fide string
           /* ----------------------------------------------------------
-             PowerShell’s  ConvertTo‑Json  wraps long strings like so:
+             PowerShell's  ConvertTo‑Json  wraps long strings like so:
                { resumeText: { value: "<real‑text>", Count: 123456 } }
              Detect that case and unwrap the  .value  property.          */
         
@@ -50,17 +49,16 @@ router.post('/', async (req, res) => {
         let inputText  = rawResume;
 
     if (tokens > TOKEN_LIMIT) {
-      const ratio   = TRUNC_TARGET / tokens;             // ≈ 0‑1
+      const ratio   = TRUNC_TARGET / tokens;             // ≈ 0‑1
       const cut     = Math.floor(rawResume.length * ratio);
       inputText     = rawResume.slice(0, cut);
       tokens        = await countTokens(inputText);
 
       console.warn(
-        `[resume] truncated from ${rawResume.length} → ${inputText.length} chars (${tokens} tokens)`
+        `[resume] truncated from ${rawResume.length} → ${inputText.length} chars (${tokens} tokens)`
       );
     }
-    const hash = createHash('sha256').update(inputText).digest('hex');
-    const cacheKey = `cv:${hash}`;
+    
     /* ---------- 2‑a. regex skills ---------- */
     const kwSkills: string[] = extractSkills(rawResume);
 
@@ -81,7 +79,7 @@ if (seHit) {
       {
         role: 'system',
         content:
-          'Extract a concise comma‑separated list (max 10) of technical skills / tools mentioned in this résumé text.',
+          'Extract a concise comma‑separated list (max 10) of technical skills / tools mentioned in this résumé text.',
       },
       { role: 'user', content: rawResume.slice(0, 4_000) },
     ],
@@ -94,8 +92,8 @@ if (seHit) {
       .split(/[,;\n]/)
       .map((s: string) => s.trim().toLowerCase())
       .filter((s: string) => !!s)                       // non‑empty
-      .filter((s: string) => s.length >= 3)             // ≥ 3 chars
-      .filter((s: string) => s.split(/\s+/).length <= 3); // ≤ 3 words
+      .filter((s: string) => s.length >= 3)             // ≥ 3 chars
+      .filter((s: string) => s.split(/\s+/).length <= 3); // ≤ 3 words
 
     /* ---------- 2‑c. merge & dedupe ---------- */
     const skills = Array.from(new Set([...kwSkills, ...aiSkills]));
@@ -106,68 +104,83 @@ if (seHit) {
         .json({ error: 'No recognizable skills found in résumé text.' });
     }
 
-/* ---------- 3. Embed résumé & run Redis K‑NN (with cache) ---------- */
-const r = await redisConn();                      // reuse for later job fetches
-let resumeVec: number[];                   // will hold the 1536‑dim vector
+/* ---------- 3. Skills-based job search ---------- */
+const r = await redisConn();
 
-// 3‑a.  Look for an existing vector
-const cachedVec = await r.json.get(cacheKey, { path: '.embedding' }) as number[] | null;
+// Use skills to find matching jobs via Redis search
+const skillsQuery = skills.map(skill => `@skills:{${skill.replace(/[^a-zA-Z0-9\s]/g, '')}}`).join(' | ');
+console.log('[resume] skills query:', skillsQuery);
 
-if (cachedVec && Array.isArray(cachedVec)) {
-  console.log('[resume] cache hit for', cacheKey);
-  resumeVec = cachedVec;                         // ✅  use cached vector
-} else {
-  console.log('[resume] cache miss – embedding résumé');
-  // 3‑b.  Generate the vector with OpenAI
-  const embedResp = await openai.embeddings.create({
-    model: EMBED_MODEL,
-    input: inputText,
-  });
-  resumeVec = embedResp.data[0].embedding;
-
-  // 3‑c.  Store in Redis and set TTL (24 h here – tweak as you wish)
-  await r.json.set(cacheKey, '.', { embedding: resumeVec });
-  await r.expire(cacheKey, 60 * 60 * 24);         // 86 400 s = 24 h
+let searchResults;
+try {
+  searchResults = await r.ft.search(
+    'jobsIdx',
+    skillsQuery || '*', // fallback to all jobs if no skills
+    {
+      LIMIT: { from: 0, size: 20 },
+      DIALECT: 3,
+      RETURN: ['2', '$', 'AS', 'json']
+    }
+  );
+} catch (searchErr) {
+  console.error('[resume] Search error:', searchErr);
+  // Fallback to basic search
+  searchResults = await r.ft.search(
+    'jobsIdx',
+    '*',
+    {
+      LIMIT: { from: 0, size: 20 },
+      DIALECT: 3,
+      RETURN: ['2', '$', 'AS', 'json']
+    }
+  );
 }
 
-/* ---------- 4. Nearest‑neighbour search (unchanged) ---------- */
-const hits = await knnSearch(resumeVec, 20);        
-                if (hits.length === 0) {
-                  return res.json({
-                    skills,
-                    recommendations: [],
-                    truncated: rawResume.length !== inputText.length,
-                    vectorEmbeddedTokens: tokens,
-                  });
-                }      // [{ id, score }]
-    
-        // Fetch the neighbour docs (re‑use `lean()` helper from recommend.ts if you like)
-        const pipe  = r.multi();
-        hits.forEach(h => {
-            const key =
-              typeof h.id === 'string' && h.id.startsWith('job:')
-                ? h.id               // already OK
-                : `job:${h.id}`;     // add prefix for numeric IDs
-            pipe.json.get(key, { path: '.' });
-          });
-        const raw   = (await pipe.exec()) as unknown[];
-    
-        const jobs  = raw
-          .map((entry, i) => Array.isArray(entry) ? entry[1] : entry)
-          .map((doc, i) => {
-            if (!doc) return null;
-            const { embedding, ...rest } = doc;   // ✂️ drop vector
-            return { ...rest, score: hits[i].score };
-        })
-          .filter(Boolean);
-          const recommendations = jobs
-          .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))  // high‑score first
-          .slice(0, 10);                                    // top‑N (change 10 → 5 if you like)
+const total = (searchResults as any).total as number;
+const documents = (searchResults as any).documents as {
+  value: { json: string };
+  id: string;
+}[];
+
+if (total === 0) {
+  return res.json({
+    skills,
+    recommendations: [],
+    truncated: rawResume.length !== inputText.length,
+    vectorEmbeddedTokens: tokens,
+  });
+}
+
+// Parse and score the results based on skill overlap
+const jobs = documents.map(doc => {
+  const parsed = JSON.parse(doc.value.json);
+  const jobData = Array.isArray(parsed) ? parsed[0] : parsed;
+  
+  // Calculate simple skill overlap score
+  const jobSkills = jobData.skills || [];
+  const overlap = skills.filter(skill => 
+    jobSkills.some((jobSkill: string) => 
+      jobSkill.toLowerCase().includes(skill.toLowerCase()) ||
+      skill.toLowerCase().includes(jobSkill.toLowerCase())
+    )
+  ).length;
+  
+  const score = overlap / Math.max(skills.length, 1); // normalize by number of skills
+  
+  return {
+    ...jobData,
+    score: Math.round(score * 100) / 100 // round to 2 decimal places
+  };
+});
+
+const recommendations = jobs
+  .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))  // high-score first
+  .slice(0, 10);                                     // top-10
 
     const truncated = rawResume.length !== inputText.length;
     return res.json({
             skills,                  // still useful for UI
-            recommendations,   // vector hits from Redis
+            recommendations,         // skills-based matches from Redis
       truncated,
       vectorEmbeddedTokens: tokens,
     });

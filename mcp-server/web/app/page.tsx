@@ -77,6 +77,8 @@ export default function Home() {
   const [loadingSimilar, setLoadingSimilar] = useState(false);
   // ★ NEW: salary range state
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 500000]);
+  // ★ NEW: scroll detection for floating navigation
+  const [showScrollNav, setShowScrollNav] = useState(false);
   
   const { savedSet, toggleFavorite } = useFavorites();
 
@@ -87,6 +89,17 @@ export default function Home() {
   const debouncedSalaryChange = useDebounce((range: [number, number]) => {
     setSalaryRange(range);
   }, 300);
+
+  // ★ NEW: Scroll detection for floating navigation
+  useEffect(() => {
+    const handleScroll = () => {
+      const scrolled = window.scrollY > 400; // Show after scrolling 400px
+      setShowScrollNav(scrolled);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
 
   /* ---------------- search helper ---------------- */
@@ -433,7 +446,28 @@ export default function Home() {
         <Sparkline />
       </div>
 
-
+      {/* Quick Access CTA to Resume Matcher */}
+      <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-medium text-emerald-900">📄 Got a resume?</h3>
+            <p className="text-sm text-emerald-700 mt-1">
+              Upload it to find jobs that match your skills automatically
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              document.getElementById('resume-matcher')?.scrollIntoView({ 
+                behavior: 'smooth',
+                block: 'start'
+              });
+            }}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200 shrink-0"
+          >
+            Try Resume Matcher →
+          </button>
+        </div>
+      </div>
 
       {loading && <p>Loading…</p>}
 
@@ -512,7 +546,7 @@ export default function Home() {
       
       <hr className="my-6" />
 
-<h2 className="text-xl font-semibold text-gray-900">📄 Résumé matcher</h2>
+<h2 id="resume-matcher" className="text-xl font-semibold text-gray-900">📄 Résumé matcher</h2>
 
 <ResumeForm
   onResult={(r) => {
@@ -546,6 +580,109 @@ export default function Home() {
   onClose={() => setSelectedJob(null)}
   onToggleSave={(job, save) => toggleFavorite(job.objectID, save)}
 />
+
+{/* Floating Navigation Cluster - Back to Top & Search */}
+{showScrollNav && (
+  <div className="fixed bottom-8 left-8 flex flex-col gap-3 z-40">
+    {/* Back to Top Button */}
+    <button
+      onClick={() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }}
+      className="bg-gray-700 hover:bg-gray-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
+      title="Back to Top"
+      aria-label="Scroll to top of page"
+    >
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M7 11l5-5m0 0l5 5m-5-5v12"
+        />
+      </svg>
+      
+      {/* Tooltip */}
+      <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+        ⬆️ Back to Top
+      </span>
+    </button>
+
+    {/* Back to Search Button */}
+    <button
+      onClick={() => {
+        document.querySelector('input[type="search"]')?.scrollIntoView({ 
+          behavior: 'smooth',
+          block: 'center'
+        });
+        // Optional: Focus the search input after scrolling
+        setTimeout(() => {
+          const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement;
+          searchInput?.focus();
+        }, 500);
+      }}
+      className="bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
+      title="Back to Search"
+      aria-label="Go back to search bar"
+    >
+      <svg
+        className="w-5 h-5"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        />
+      </svg>
+      
+      {/* Tooltip */}
+      <span className="absolute left-full ml-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+        🔍 Back to Search
+      </span>
+    </button>
+  </div>
+)}
+
+{/* Floating Action Button - Jump to Resume Matcher */}
+<button
+  onClick={() => {
+    document.getElementById('resume-matcher')?.scrollIntoView({ 
+      behavior: 'smooth',
+      block: 'start'
+    });
+  }}
+  className="fixed bottom-8 right-8 bg-emerald-600 hover:bg-emerald-700 text-white p-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-200 z-40 group"
+  title="Jump to Resume Matcher"
+  aria-label="Jump to Resume Matcher section"
+>
+  <svg
+    className="w-6 h-6"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+    />
+  </svg>
+  
+  {/* Tooltip */}
+  <span className="absolute right-full mr-3 top-1/2 -translate-y-1/2 bg-gray-900 text-white text-sm px-3 py-2 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+    📄 Resume Matcher
+  </span>
+</button>
       </main>
     </div>
   );

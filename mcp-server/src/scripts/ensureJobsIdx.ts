@@ -54,6 +54,14 @@ async function ensureJobsIndex() {
           '$.source': {
             type: 'TAG',
             AS: 'source'
+          },
+          '$.embedding': {
+            type: 'VECTOR',
+            AS: 'embedding',
+            ALGORITHM: 'FLAT',
+            TYPE: 'FLOAT32',
+            DIM: 1536,
+            DISTANCE_METRIC: 'COSINE'
           }
         },
         {

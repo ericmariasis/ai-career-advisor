@@ -153,7 +153,8 @@ export default function SearchBar({
        *      If it re‑runs on every re‑render, Autocomplete mounts a
        *      second React root on the same DOM node → the warning you saw.
        */
-      }, []);                                   // ✏️ was  [onSearch]
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, []);                                   // ✏️ was  [onSearch] - intentionally empty to run only once
 
     /* ------- CLEAR-BUTTON UI -------- */
   return (

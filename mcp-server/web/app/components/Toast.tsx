@@ -28,7 +28,7 @@ export function ToastItem({ toast, onRemove }: ToastProps) {
     // Auto-close timer
     const timer = setTimeout(handleClose, toast.duration || 3000);
     return () => clearTimeout(timer);
-  }, [toast.duration]);
+  }, [toast.duration, handleClose]);
 
   const getToastIcon = () => {
     switch (toast.type) {

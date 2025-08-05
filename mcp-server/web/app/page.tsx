@@ -1,6 +1,6 @@
 
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // Removed useSearchParams to avoid Suspense boundary issue
 
 // Skip prerendering due to algoliasearch client issues
@@ -17,10 +17,25 @@ import { Sparkline } from './components/Sparkline';
 import EmptyState from './components/EmptyState';
 import FacetList, { type FacetBucket } from './components/FacetList';
 import FilterChips from './components/FilterChips';
+import SalarySlider from './components/filters/SalarySlider';
 
 // Simplified sort controls inline to avoid Suspense boundary issues
 
 import { useFavorites } from './contexts/FavoritesContext';
+
+// Simple debounce utility for salary slider
+const useDebounce = <T extends unknown[]>(
+  callback: (...args: T) => void, 
+  delay: number
+) => {
+  const [debounceTimer, setDebounceTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  return (...args: T) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    const timer = setTimeout(() => callback(...args), delay);
+    setDebounceTimer(timer);
+  };
+};
 
 type AlgoliaResponse = {
   hits: Job[];
@@ -56,20 +71,22 @@ export default function Home() {
   const [selectedJob,  setSelectedJob]  = useState<Job | null>(null);
     const [tag, setTag] = useState('');
   // ★ NEW: salary range state
-  const [salaryMin, setSalaryMin] = useState('');
-  const [salaryMax, setSalaryMax] = useState('');
+  const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 500000]);
   
   const { savedSet, toggleFavorite } = useFavorites();
 
+  // Debounced salary range handler to prevent excessive API calls
+  const debouncedSalaryChange = useDebounce((range: [number, number]) => {
+    setSalaryRange(range);
+  }, 300);
+
 
   /* ---------------- search helper ---------------- */
-    async function search(
+    const search = useCallback(async (
         q: string,
         page = 0,
-        tag = '',
-        salaryMin = '',
-        salaryMax = ''
-      ) {
+        tag = ''
+      ) => {
     setLoading(true);
     try {
             // build an array of facetFilters for location, industry, company, skills, and your existing tag
@@ -89,8 +106,8 @@ export default function Home() {
                   tag,
                   hitsPerPage: 10,
                   facetFilters: JSON.stringify(ff),
-                  salaryMin,
-                  salaryMax,
+                  salaryMin: salaryRange[0] > 0 ? salaryRange[0].toString() : '',
+                  salaryMax: salaryRange[1] < 500000 ? salaryRange[1].toString() : '',
                   seniority_ai: selectedSeniority,
                   industry_ai: selectedIndustryAI,
                 },
@@ -101,14 +118,14 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedLocations, selectedIndustries, selectedCompanies, selectedSkills, selectedSeniority, selectedIndustryAI, salaryRange]);
 
 
   
       // ★ UNIFIED: single useEffect for all search triggers
       useEffect(() => {
-        search(query, 0, tag, salaryMin, salaryMax);
-      }, [selectedLocations, selectedIndustries, selectedCompanies, selectedSkills, selectedSeniority, selectedIndustryAI, query, tag, salaryMin, salaryMax]);
+        search(query, 0, tag);
+      }, [search, query, tag]);
 
 
       function clearSearch() {
@@ -121,8 +138,8 @@ export default function Home() {
         setSelectedSkills([]);
         setSelectedSeniority(null);
         setSelectedIndustryAI(null);
-        // salaryMin / salaryMax stay as-is so the user's filters persist
-        search('', 0, '', salaryMin, salaryMax);
+        setSalaryRange([0, 500000]); // Reset salary range
+        search('', 0, '');
       }
 
       // ★ NEW: Handle facet filter changes
@@ -333,23 +350,13 @@ export default function Home() {
      Saved&nbsp;Jobs
    </a>
  </header>
-       {/* ★ NEW: salary-min / salary-max inputs */}
-      <div className="flex items-center gap-4 mb-4">
-        <label className="text-sm">Salary Min:</label>
-        <input
-          type="number"
-          value={salaryMin}
-          onChange={e => setSalaryMin(e.target.value)}
-          placeholder="0"
-          className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm"
-        />
-        <label className="text-sm">Max:</label>
-        <input
-          type="number"
-          value={salaryMax}
-          onChange={e => setSalaryMax(e.target.value)}
-          placeholder="∞"
-          className="w-20 rounded bg-zinc-800 px-2 py-1 text-sm"
+       {/* ★ NEW: Salary Range Slider */}
+      <div className="mb-4">
+        <SalarySlider
+          min={0}
+          max={500000}
+          value={salaryRange}
+          onChange={debouncedSalaryChange}
         />
       </div>
 
@@ -360,7 +367,7 @@ export default function Home() {
             onChange={(e) => {
                 const val = e.target.value;
                 setTag(val);
-                search(query, 0, val, salaryMin, salaryMax);
+                search(query, 0, val);
               }}
     className="rounded bg-zinc-800 px-2 py-1 text-sm"
   >
@@ -374,7 +381,7 @@ export default function Home() {
       <div className="flex items-center gap-4">
         <div className="flex-1 relative">
           <SearchBar
-            onSearch={(term) => search(term, 0, tag, salaryMin, salaryMax)}
+            onSearch={(term) => search(term, 0, tag)}
             onSelectHit={(hit) => {
                   // hit already contains all attributes you need
                   setSelectedJob(hit);
@@ -450,7 +457,7 @@ export default function Home() {
               page={page}
               nbPages={result.nbPages}
               onPage={(p) =>
-                search(query, p, tag, salaryMin, salaryMax)
+                search(query, p, tag)
               }
             />
           )}

@@ -45,6 +45,14 @@ const buildTagFilter = (field: string, values: string[]) => {
 
   return ` @${field}:{${tokens.join('|')}}`;
 };
+
+// Helper function for TEXT field filters (like company)
+const buildTextFilter = (field: string, values: string[]): string => {
+  if (!values.length) return '';
+  
+  const quotedValues = values.map(v => `"${v.replace(/"/g, '\\"')}"`);
+  return ` @${field}:(${quotedValues.join('|')})`;
+};
 // ─────────────────────────────────────────────────────────
 // GET /api/search/job/:id   → fetch one job document
 // ─────────────────────────────────────────────────────────
@@ -122,6 +130,7 @@ if (facetFilters) {
     const locationFilters: string[] = [];
     const industryFilters: string[] = [];
     const companyFilters: string[] = [];
+    const skillsFilters: string[] = [];
     
     filters.forEach(filter => {
       if (filter.startsWith('location:')) {
@@ -130,12 +139,15 @@ if (facetFilters) {
         industryFilters.push(filter.substring(9)); // Remove "industry:" prefix
       } else if (filter.startsWith('company:')) {
         companyFilters.push(filter.substring(8)); // Remove "company:" prefix
+      } else if (filter.startsWith('skills:')) {
+        skillsFilters.push(filter.substring(7)); // Remove "skills:" prefix
       }
     });
     
     if (locationFilters.length) redisQuery += buildTagFilter('location', locationFilters);
     if (industryFilters.length) redisQuery += buildTagFilter('industry', industryFilters);
-    if (companyFilters.length) redisQuery += buildTagFilter('company', companyFilters);
+    if (companyFilters.length) redisQuery += buildTextFilter('company', companyFilters);
+    if (skillsFilters.length) redisQuery += buildTagFilter('skills', skillsFilters);
   } catch (e) {
     console.warn('Failed to parse facetFilters:', facetFilters, e);
   }

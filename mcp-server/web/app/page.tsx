@@ -15,6 +15,7 @@ import ResumeForm from './components/ResumeForm';
 import { LiveFavoritesCounter } from './components/LiveFavoritesCounter';
 import { Sparkline } from './components/Sparkline';
 import EmptyState from './components/EmptyState';
+import FacetList, { type FacetBucket } from './components/FacetList';
 
 // Simplified sort controls inline to avoid Suspense boundary issues
 
@@ -32,6 +33,8 @@ type AlgoliaResponse = {
 export default function Home() {
       const [selectedLocations,  setSelectedLocations]  = useState<Set<string>>(new Set());
     const [selectedIndustries, setSelectedIndustries] = useState<Set<string>>(new Set());
+    const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+    const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
     // ★ NEW: control expand/collapse of long facet lists
     const [showAllLoc, setShowAllLoc] = useState(false);
     const [showAllInd, setShowAllInd] = useState(false);
@@ -66,10 +69,12 @@ export default function Home() {
       ) {
     setLoading(true);
     try {
-            // build an array of facetFilters for location, industry, and your existing tag
+            // build an array of facetFilters for location, industry, company, skills, and your existing tag
       const ff: string[] = [];
       selectedLocations.forEach(loc => ff.push(`location:${loc}`));
       selectedIndustries.forEach(ind => ff.push(`industry:${ind}`));
+      selectedCompanies.forEach(comp => ff.push(`company:${comp}`));
+      selectedSkills.forEach(skill => ff.push(`skills:${skill}`));
       if (tag) ff.push(`tags:${tag}`);
 
 
@@ -98,16 +103,42 @@ export default function Home() {
       // ★ UNIFIED: single useEffect for all search triggers
       useEffect(() => {
         search(query, 0, tag, salaryMin, salaryMax);
-      }, [selectedLocations, selectedIndustries, query, tag, salaryMin, salaryMax]);
+      }, [selectedLocations, selectedIndustries, selectedCompanies, selectedSkills, query, tag, salaryMin, salaryMax]);
 
 
       function clearSearch() {
         setQuery('');
         setTag('');
         setPage(0);
+        setSelectedLocations(new Set());
+        setSelectedIndustries(new Set());
+        setSelectedCompanies([]);
+        setSelectedSkills([]);
         // salaryMin / salaryMax stay as-is so the user's filters persist
         search('', 0, '', salaryMin, salaryMax);
       }
+
+      // ★ NEW: Handle facet filter changes
+      const handleFacetChange = (facet: string, selected: string[]) => {
+        if (facet === 'company') {
+          setSelectedCompanies(selected);
+        } else if (facet === 'skills') {
+          setSelectedSkills(selected);
+        }
+      };
+
+      // ★ NEW: Convert facet dictionaries to FacetBucket arrays
+      const getCompanyBuckets = (): FacetBucket[] => {
+        return Object.entries(result?.facets?.company ?? {})
+          .map(([value, count]) => ({ value, count }))
+          .sort((a, b) => b.count - a.count);
+      };
+
+      const getSkillsBuckets = (): FacetBucket[] => {
+        return Object.entries(result?.facets?.skills ?? {})
+          .map(([value, count]) => ({ value, count }))
+          .sort((a, b) => b.count - a.count);
+      };
 
   return (
     <div className="min-h-screen bg-white">
@@ -246,6 +277,26 @@ export default function Home() {
               </button>
             )}
           </div>
+
+          {/* ★ NEW: Company facets */}
+          <FacetList
+            title="Company"
+            facet="company"
+            buckets={getCompanyBuckets()}
+            selected={selectedCompanies}
+            onChange={handleFacetChange}
+            searchPlaceholder="Search companies..."
+          />
+
+          {/* ★ NEW: Skills facets */}
+          <FacetList
+            title="Skills"
+            facet="skills"
+            buckets={getSkillsBuckets()}
+            selected={selectedSkills}
+            onChange={handleFacetChange}
+            searchPlaceholder="Search skills..."
+          />
 
         </div>
       )}

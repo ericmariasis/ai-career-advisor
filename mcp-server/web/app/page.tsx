@@ -75,7 +75,6 @@ export default function Home() {
   const [similarHits, setSimilarHits] = useState<Job[]>([]);
   const [showSimilar, setShowSimilar] = useState(false);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
-    const [tag, setTag] = useState('');
   // ★ NEW: salary range state
   const [salaryRange, setSalaryRange] = useState<[number, number]>([0, 500000]);
   
@@ -93,11 +92,10 @@ export default function Home() {
   /* ---------------- search helper ---------------- */
     const search = useCallback(async (
         q: string,
-        page = 0,
-        tag = ''
+        page = 0
       ) => {
     // Create unique search key to prevent duplicates
-    const searchKey = `${q}-${page}-${tag}`;
+    const searchKey = `${q}-${page}`;
     if (currentSearchRef.current === searchKey) {
       console.log('⚠️ Duplicate search prevented:', searchKey);
       return;
@@ -118,7 +116,6 @@ export default function Home() {
       selectedIndustries.forEach(ind => ff.push(`industry:${ind}`));
       selectedCompanies.forEach(comp => ff.push(`company:${comp}`));
       selectedSkills.forEach(skill => ff.push(`skills:${skill}`));
-      if (tag) ff.push(`tags:${tag}`);
 
 
       
@@ -126,7 +123,6 @@ export default function Home() {
                 params: {
                   q,
                   page,
-                  tag,
                   hitsPerPage: 10,
                   facetFilters: JSON.stringify(ff),
                   salaryMin: salaryRange[0] > 0 ? salaryRange[0].toString() : '',
@@ -183,13 +179,12 @@ export default function Home() {
   
       // ★ UNIFIED: single useEffect for all search triggers
       useEffect(() => {
-        search(query, 0, tag);
-      }, [search, query, tag]);
+        search(query, 0);
+      }, [search, query]);
 
 
       function clearSearch() {
         setQuery('');
-        setTag('');
         setPage(0);
         setSelectedLocations(new Set());
         setSelectedIndustries(new Set());
@@ -198,7 +193,7 @@ export default function Home() {
         setSelectedSeniority(null);
         setSelectedIndustryAI(null);
         setSalaryRange([0, 500000]); // Reset salary range
-        search('', 0, '');
+        search('', 0);
       }
 
       // ★ NEW: Handle facet filter changes
@@ -419,28 +414,11 @@ export default function Home() {
         />
       </div>
 
-      <div className="flex items-center gap-2">
-                  <label className="text-sm text-gray-700">Filter:</label>
-  <select
-    value={tag}
-            onChange={(e) => {
-                const val = e.target.value;
-                setTag(val);
-                search(query, 0, val);
-              }}
-    className="rounded bg-zinc-800 px-2 py-1 text-sm"
-  >
-    <option value="">All jobs</option>
-    <option value="remote">Remote</option>
-    <option value="senior">Senior</option>
-    <option value="energy">Energy</option>
-    {/* add more if you have other industries/tags */}
-  </select>
-</div>
+
       <div className="flex items-center gap-4">
         <div className="flex-1 relative">
           <SearchBar
-            onSearch={(term) => search(term, 0, tag)}
+            onSearch={(term) => search(term, 0)}
             onSelectHit={(hit) => {
                   // hit already contains all attributes you need
                   setSelectedJob(hit);
@@ -516,7 +494,7 @@ export default function Home() {
               page={page}
               nbPages={result.nbPages}
               onPage={(p) =>
-                search(query, p, tag)
+                search(query, p)
               }
             />
           )}

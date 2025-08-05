@@ -87,14 +87,37 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
                   </p>
                 </div>
 
-                {/* Save / unsave */}
-                <button
-                  onClick={() => onToggleSave(job, !saved)}
-                  className="text-red-500 hover:text-red-600"
-                  aria-label={saved ? 'Unsave job' : 'Save job'}
-                >
-                  {saved ? '♥' : '♡'}
-                </button>
+                <div className="flex items-center gap-2">
+                  {/* Save / unsave */}
+                  <button
+                    onClick={() => onToggleSave(job, !saved)}
+                    className="text-red-500 hover:text-red-600 p-1"
+                    aria-label={saved ? 'Unsave job' : 'Save job'}
+                  >
+                    {saved ? '♥' : '♡'}
+                  </button>
+                  
+                  {/* Close button */}
+                  <button
+                    onClick={onClose}
+                    className="text-zinc-400 hover:text-zinc-300 p-1 transition-colors"
+                    aria-label="Close modal"
+                  >
+                    <svg
+                      className="w-5 h-5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M6 18L18 6M6 6l12 12"
+                      />
+                    </svg>
+                  </button>
+                </div>
               </div>
 
               <hr className="my-4" />

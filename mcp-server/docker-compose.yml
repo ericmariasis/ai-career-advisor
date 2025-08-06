@@ -17,13 +17,10 @@ services:
     depends_on:
       - redis
   web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
+    image: ghcr.io/ericmariasis/ai-web:latest
     env_file:
       - .env.docker
-    expose:
-      - "3000"
+    expose: ["3000"]
     depends_on:
       - server
 

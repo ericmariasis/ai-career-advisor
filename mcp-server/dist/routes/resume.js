@@ -5,15 +5,16 @@ const extractSkills_1 = require("../utils/extractSkills");
 const redisSearch_1 = require("../lib/redisSearch");
 const openai_1 = require("../openai");
 const tokens_1 = require("../lib/tokens");
-const crypto_1 = require("crypto");
 const semcache_1 = require("../lib/semcache");
+const rateLimiter_1 = require("../middleware/rateLimiter");
+const requestValidation_1 = require("../middleware/requestValidation");
+const usageMonitor_1 = require("../middleware/usageMonitor");
 const router = (0, express_1.Router)();
 /* ---------- token‑guard constants ---------- */
-const EMBED_MODEL = 'text-embedding-ada-002';
-const TOKEN_LIMIT = 7000; // soft cap (hard = 8 192)
+const TOKEN_LIMIT = 7000; // soft cap (hard = 8 192)
 const TRUNC_TARGET = 6500; // what we aim for after trimming
 /**  POST /api/resume  { resumeText: string } */
-router.post('/', async (req, res) => {
+router.post('/', rateLimiter_1.aiEndpointLimiter, requestValidation_1.validateResumeRequest, usageMonitor_1.checkUsageLimits, async (req, res) => {
     var _a;
     try {
         const { resumeText } = req.body;
@@ -21,9 +22,9 @@ router.post('/', async (req, res) => {
             return res.status(400).json({ error: 'resumeText required' });
         }
         /* ---------- 1. token guard ---------- */
-        // ☑️ Always work with a bona‑fide string
+        // ☑️ Always work with a bona‑fide string
         /* ----------------------------------------------------------
-           PowerShell’s  ConvertTo‑Json  wraps long strings like so:
+           PowerShell's  ConvertTo‑Json  wraps long strings like so:
              { resumeText: { value: "<real‑text>", Count: 123456 } }
            Detect that case and unwrap the  .value  property.          */
         const rawResume = (() => {
@@ -45,14 +46,12 @@ router.post('/', async (req, res) => {
         let tokens = await (0, tokens_1.countTokens)(rawResume);
         let inputText = rawResume;
         if (tokens > TOKEN_LIMIT) {
-            const ratio = TRUNC_TARGET / tokens; // ≈ 0‑1
+            const ratio = TRUNC_TARGET / tokens; // ≈ 0‑1
             const cut = Math.floor(rawResume.length * ratio);
             inputText = rawResume.slice(0, cut);
             tokens = await (0, tokens_1.countTokens)(inputText);
-            console.warn(`[resume] truncated from ${rawResume.length} → ${inputText.length} chars (${tokens} tokens)`);
+            console.warn(`[resume] truncated from ${rawResume.length} → ${inputText.length} chars (${tokens} tokens)`);
         }
-        const hash = (0, crypto_1.createHash)('sha256').update(inputText).digest('hex');
-        const cacheKey = `cv:${hash}`;
         /* ---------- 2‑a. regex skills ---------- */
         const kwSkills = (0, extractSkills_1.extractSkills)(rawResume);
         /* ---------- 2‑b. LLM‑enriched skills (semantic cache) ---------- */
@@ -71,20 +70,24 @@ router.post('/', async (req, res) => {
                 messages: [
                     {
                         role: 'system',
-                        content: 'Extract a concise comma‑separated list (max 10) of technical skills / tools mentioned in this résumé text.',
+                        content: 'Extract a concise comma‑separated list (max 10) of technical skills / tools mentioned in this résumé text.',
                     },
                     { role: 'user', content: rawResume.slice(0, 4000) },
                 ],
             });
             aiSkillsRaw = (_a = aiResp.choices[0].message.content) !== null && _a !== void 0 ? _a : '';
             await (0, semcache_1.putCachedAnswer)('skill_extract', sePrompt, aiSkillsRaw);
+            // Track API usage for monitoring and cost control
+            const inputTokens = await (0, tokens_1.countTokens)(rawResume.slice(0, 4000));
+            const outputTokens = await (0, tokens_1.countTokens)(aiSkillsRaw);
+            await usageMonitor_1.usageMonitor.trackUsage(req, openai_1.OPENAI_MODEL, inputTokens, outputTokens);
         }
         const aiSkills = aiSkillsRaw
             .split(/[,;\n]/)
             .map((s) => s.trim().toLowerCase())
             .filter((s) => !!s) // non‑empty
-            .filter((s) => s.length >= 3) // ≥ 3 chars
-            .filter((s) => s.split(/\s+/).length <= 3); // ≤ 3 words
+            .filter((s) => s.length >= 3) // ≥ 3 chars
+            .filter((s) => s.split(/\s+/).length <= 3); // ≤ 3 words
         /* ---------- 2‑c. merge & dedupe ---------- */
         const skills = Array.from(new Set([...kwSkills, ...aiSkills]));
         if (skills.length === 0) {
@@ -92,62 +95,60 @@ router.post('/', async (req, res) => {
                 .status(400)
                 .json({ error: 'No recognizable skills found in résumé text.' });
         }
-        /* ---------- 3. Embed résumé & run Redis K‑NN (with cache) ---------- */
-        const r = await (0, redisSearch_1.redisConn)(); // reuse for later job fetches
-        let resumeVec; // will hold the 1536‑dim vector
-        // 3‑a.  Look for an existing vector
-        const cachedVec = await r.json.get(cacheKey, { path: '.embedding' });
-        if (cachedVec && Array.isArray(cachedVec)) {
-            console.log('[resume] cache hit for', cacheKey);
-            resumeVec = cachedVec; // ✅  use cached vector
-        }
-        else {
-            console.log('[resume] cache miss – embedding résumé');
-            // 3‑b.  Generate the vector with OpenAI
-            const embedResp = await openai_1.openai.embeddings.create({
-                model: EMBED_MODEL,
-                input: inputText,
+        /* ---------- 3. Skills-based job search ---------- */
+        const r = await (0, redisSearch_1.redisConn)();
+        // Use skills to find matching jobs via Redis search
+        const skillsQuery = skills.map(skill => `@skills:{${skill.replace(/[^a-zA-Z0-9\s]/g, '')}}`).join(' | ');
+        console.log('[resume] skills query:', skillsQuery);
+        let searchResults;
+        try {
+            searchResults = await r.ft.search('jobsIdx', skillsQuery || '*', // fallback to all jobs if no skills
+            {
+                LIMIT: { from: 0, size: 20 },
+                DIALECT: 3,
+                RETURN: ['2', '$', 'AS', 'json']
             });
-            resumeVec = embedResp.data[0].embedding;
-            // 3‑c.  Store in Redis and set TTL (24 h here – tweak as you wish)
-            await r.json.set(cacheKey, '.', { embedding: resumeVec });
-            await r.expire(cacheKey, 60 * 60 * 24); // 86 400 s = 24 h
         }
-        /* ---------- 4. Nearest‑neighbour search (unchanged) ---------- */
-        const hits = await (0, redisSearch_1.knnSearch)(resumeVec, 20);
-        if (hits.length === 0) {
+        catch (searchErr) {
+            console.error('[resume] Search error:', searchErr);
+            // Fallback to basic search
+            searchResults = await r.ft.search('jobsIdx', '*', {
+                LIMIT: { from: 0, size: 20 },
+                DIALECT: 3,
+                RETURN: ['2', '$', 'AS', 'json']
+            });
+        }
+        const total = searchResults.total;
+        const documents = searchResults.documents;
+        if (total === 0) {
             return res.json({
                 skills,
                 recommendations: [],
                 truncated: rawResume.length !== inputText.length,
                 vectorEmbeddedTokens: tokens,
             });
-        } // [{ id, score }]
-        // Fetch the neighbour docs (re‑use `lean()` helper from recommend.ts if you like)
-        const pipe = r.multi();
-        hits.forEach(h => {
-            const key = typeof h.id === 'string' && h.id.startsWith('job:')
-                ? h.id // already OK
-                : `job:${h.id}`; // add prefix for numeric IDs
-            pipe.json.get(key, { path: '.' });
+        }
+        // Parse and score the results based on skill overlap
+        const jobs = documents.map(doc => {
+            const parsed = JSON.parse(doc.value.json);
+            const jobData = Array.isArray(parsed) ? parsed[0] : parsed;
+            // Calculate simple skill overlap score
+            const jobSkills = jobData.skills || [];
+            const overlap = skills.filter(skill => jobSkills.some((jobSkill) => jobSkill.toLowerCase().includes(skill.toLowerCase()) ||
+                skill.toLowerCase().includes(jobSkill.toLowerCase()))).length;
+            const score = overlap / Math.max(skills.length, 1); // normalize by number of skills
+            return {
+                ...jobData,
+                score: Math.round(score * 100) / 100 // round to 2 decimal places
+            };
         });
-        const raw = (await pipe.exec());
-        const jobs = raw
-            .map((entry, i) => Array.isArray(entry) ? entry[1] : entry)
-            .map((doc, i) => {
-            if (!doc)
-                return null;
-            const { embedding, ...rest } = doc; // ✂️ drop vector
-            return { ...rest, score: hits[i].score };
-        })
-            .filter(Boolean);
         const recommendations = jobs
-            .sort((a, b) => { var _a, _b; return ((_a = b.score) !== null && _a !== void 0 ? _a : 0) - ((_b = a.score) !== null && _b !== void 0 ? _b : 0); }) // high‑score first
-            .slice(0, 10); // top‑N (change 10 → 5 if you like)
+            .sort((a, b) => { var _a, _b; return ((_a = b.score) !== null && _a !== void 0 ? _a : 0) - ((_b = a.score) !== null && _b !== void 0 ? _b : 0); }) // high-score first
+            .slice(0, 10); // top-10
         const truncated = rawResume.length !== inputText.length;
         return res.json({
             skills, // still useful for UI
-            recommendations, // vector hits from Redis
+            recommendations, // skills-based matches from Redis
             truncated,
             vectorEmbeddedTokens: tokens,
         });
@@ -158,7 +159,7 @@ router.post('/', async (req, res) => {
     }
 });
 /* ---------- coaching feedback ---------- */
-router.post('/feedback', async (req, res) => {
+router.post('/feedback', rateLimiter_1.feedbackLimiter, requestValidation_1.validateResumeRequest, usageMonitor_1.checkUsageLimits, async (req, res) => {
     var _a, _b;
     const { resumeText } = req.body;
     if (!resumeText) {
@@ -192,6 +193,10 @@ Be concise.`;
             });
             feedback = ((_b = (_a = completion.choices[0].message) === null || _a === void 0 ? void 0 : _a.content) === null || _b === void 0 ? void 0 : _b.trim()) || '';
             await (0, semcache_1.putCachedAnswer)('tech_skill_extract', fbPrompt, feedback);
+            // Track API usage for monitoring and cost control
+            const inputTokens = await (0, tokens_1.countTokens)(user);
+            const outputTokens = await (0, tokens_1.countTokens)(feedback);
+            await usageMonitor_1.usageMonitor.trackUsage(req, openai_1.OPENAI_MODEL, inputTokens, outputTokens);
         }
         return res.json({ feedback });
     }

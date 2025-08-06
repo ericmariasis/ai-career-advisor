@@ -19,7 +19,60 @@ const lean = (doc, score) => {
     const { embedding, ...rest } = doc;
     return { ...rest, score };
 };
+// Simple job suggestions endpoint for "no results" fallback
+router.get('/suggestions', async (req, res) => {
+    console.log('🎯 SUGGESTIONS ROUTE HIT with query:', req.query);
+    const { text } = req.query;
+    if (!text || typeof text !== 'string' || !text.trim()) {
+        return res.status(400).json({ error: 'Missing or empty text parameter' });
+    }
+    try {
+        const r = await (0, redisSearch_1.redisConn)();
+        // For now, just return some related jobs based on simple search
+        // This is a simplified version that searches for jobs and returns a few
+        const searchRes = await r.ft.search('jobsIdx', `${text.trim()}*`, // Simple prefix search
+        {
+            LIMIT: { from: 0, size: 6 },
+            DIALECT: 3,
+            RETURN: ['2', '$', 'AS', 'json']
+        });
+        const total = searchRes.total;
+        const documents = searchRes.documents;
+        if (total === 0) {
+            // If no matches, return some random popular jobs
+            const fallbackRes = await r.ft.search('jobsIdx', '*', {
+                LIMIT: { from: 0, size: 6 },
+                DIALECT: 3,
+                RETURN: ['2', '$', 'AS', 'json']
+            });
+            const fallbackDocs = fallbackRes.documents;
+            const suggestions = fallbackDocs.map((doc) => {
+                const parsed = JSON.parse(doc.value.json);
+                const job = Array.isArray(parsed) ? parsed[0] : parsed; // unwrap `[ {...} ]`
+                return {
+                    ...job,
+                    score: 0.5 // Mock similarity score
+                };
+            });
+            return res.json(suggestions);
+        }
+        const suggestions = documents.map((doc) => {
+            const parsed = JSON.parse(doc.value.json);
+            const job = Array.isArray(parsed) ? parsed[0] : parsed; // unwrap `[ {...} ]`
+            return {
+                ...job,
+                score: 0.8 // Mock similarity score for text matches
+            };
+        });
+        res.json(suggestions);
+    }
+    catch (err) {
+        console.error('Suggestions error:', err);
+        res.status(500).json({ error: 'Failed to get suggestions' });
+    }
+});
 router.get('/job/:id', async (req, res) => {
+    console.log('🔍 ID ROUTE HIT with params:', req.params);
     const r = await (0, redisSearch_1.redisConn)();
     const jobKey = `job:${req.params.id}`;
     /* 1️⃣ fetch the source job */

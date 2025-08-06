@@ -36,7 +36,7 @@ async function ensureJobsIndex() {
                     AS: 'industry'
                 },
                 '$.location': {
-                    type: 'TEXT',
+                    type: 'TAG',
                     AS: 'location'
                 },
                 '$.salary_estimate': {
@@ -51,6 +51,14 @@ async function ensureJobsIndex() {
                 '$.source': {
                     type: 'TAG',
                     AS: 'source'
+                },
+                '$.embedding': {
+                    type: 'VECTOR',
+                    AS: 'embedding',
+                    ALGORITHM: 'FLAT',
+                    TYPE: 'FLOAT32',
+                    DIM: 1536,
+                    DISTANCE_METRIC: 'COSINE'
                 }
             }, {
                 ON: 'JSON',

@@ -5,6 +5,9 @@ import { openai, OPENAI_MODEL } from '../openai';
 import { countTokens }          from '../lib/tokens';
 import { createHash } from 'crypto';
 import { getCachedAnswer, putCachedAnswer } from '../lib/semcache';
+import { aiEndpointLimiter, feedbackLimiter } from '../middleware/rateLimiter';
+import { validateResumeRequest } from '../middleware/requestValidation';
+import { checkUsageLimits, trackApiUsage, usageMonitor } from '../middleware/usageMonitor';
 
 
 const router = Router();
@@ -14,7 +17,7 @@ const TOKEN_LIMIT  = 7_000;   // soft cap (hard = 8 192)
 const TRUNC_TARGET = 6_500;   // what we aim for after trimming
 
 /**  POST /api/resume  { resumeText: string } */
-router.post('/', async (req, res) => {
+router.post('/', aiEndpointLimiter, validateResumeRequest, checkUsageLimits, async (req, res) => {
   try {
         const { resumeText } = req.body as { resumeText?: unknown };
         if (resumeText === undefined || resumeText === null) {
@@ -86,6 +89,10 @@ if (seHit) {
   });
   aiSkillsRaw = aiResp.choices[0].message.content ?? '';
   await putCachedAnswer('skill_extract', sePrompt, aiSkillsRaw);
+  // Track API usage for monitoring and cost control
+  const inputTokens = await countTokens(rawResume.slice(0, 4_000));
+  const outputTokens = await countTokens(aiSkillsRaw);
+  await usageMonitor.trackUsage(req, OPENAI_MODEL, inputTokens, outputTokens);
 }
 
     const aiSkills: string[] = aiSkillsRaw
@@ -191,7 +198,7 @@ const recommendations = jobs
 });
 
 /* ---------- coaching feedback ---------- */
-router.post('/feedback', async (req, res) => {
+router.post('/feedback', feedbackLimiter, validateResumeRequest, checkUsageLimits, async (req, res) => {
   const { resumeText } = req.body as { resumeText?: unknown };
   if (!resumeText) {
     return res.status(400).json({ error: 'Missing resumeText' });
@@ -226,6 +233,10 @@ if (fbHit) {
   });
   feedback = completion.choices[0].message?.content?.trim() || '';
   await putCachedAnswer('tech_skill_extract', fbPrompt, feedback);
+  // Track API usage for monitoring and cost control
+  const inputTokens = await countTokens(user);
+  const outputTokens = await countTokens(feedback);
+  await usageMonitor.trackUsage(req, OPENAI_MODEL, inputTokens, outputTokens);
 }
 return res.json({ feedback });
 

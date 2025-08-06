@@ -25,6 +25,19 @@ router.post('/', async (req, res) => {
         const total = await (0, store_1.toggleFavorite)(userToken, objectID, save);
         // Broadcast real-time update
         await (0, pubsub_1.broadcastFavorite)(save ? 1 : -1, userToken, objectID);
+        /* 1️⃣.5  store activity for trending data ---------------------- */
+        try {
+            const redis = await (0, redisSearch_1.redisConn)();
+            await redis.xAdd('favorites_activity', '*', {
+                'act': save ? '1' : '-1',
+                'user': userToken,
+                'job': objectID
+            });
+            console.log(`📈 Added activity to stream: ${save ? '+1' : '-1'} for job ${objectID}`);
+        }
+        catch (err) {
+            console.error('Failed to write activity stream:', err);
+        }
         /* 2️⃣  send Insights event ------------------------------------ */
         if (save) {
             // ► user clicked  ⭐  — we record it as a conversion *after* a search

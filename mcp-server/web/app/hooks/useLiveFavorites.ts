@@ -9,7 +9,7 @@ export function useLiveFavorites(initial = 0) {
     async function fetchInitialCount() {
       try {
 
-        const res = await fetch('/api/favorites-stats/total');
+        const res = await fetch('/api/favorites-total/total');
         
         if (res.ok) {
           const data = await res.json();

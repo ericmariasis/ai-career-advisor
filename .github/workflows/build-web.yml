@@ -3,9 +3,6 @@ name: Build & push web image
 on:
   push:
     branches: [ main ]
-    paths:                    # rebuild only when the web code changes
-      - 'mcp-server/web/**'
-      - '.github/workflows/build-web.yml'
   workflow_dispatch:
 
 jobs:

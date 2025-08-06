@@ -27,6 +27,8 @@ COPY --from=builder /app/jobs_seed.json ./
 # Set production environment
 ENV NODE_ENV=production
 
+ENV NODE_OPTIONS="--max_old_space_size=1024"
+
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD node -e "require('http').get('http://localhost:4000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"

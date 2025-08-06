@@ -37,3 +37,37 @@ jobs:
         tags: ghcr.io/${{ github.repository_owner }}/ai-web:latest
         cache-from: type=gha
         cache-to:   type=gha,mode=max
+
+  deploy:
+    needs: build                # run only if build job succeeded
+    runs-on: ubuntu-latest
+
+    steps:
+    # --- prepare ssh -------------------------------------------
+    - name: Install ssh client
+      run: sudo apt-get update && sudo apt-get install -y openssh-client
+
+    - name: Add Lightsail host key
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan -H ${{ secrets.LS_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Write private key
+      run: |
+        echo "${{ secrets.LS_SSH_KEY }}" > ~/.ssh/id_ed25519
+        chmod 600 ~/.ssh/id_ed25519
+
+    # --- deploy -------------------------------------------------
+    - name: Pull images & restart stack on Lightsail
+      env:
+        HOST: ${{ secrets.LS_HOST }}
+        USER: ${{ secrets.LS_USER }}
+      run: |
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST <<'EOF'
+          set -e
+          cd ~/ai-career-advisor/mcp-server
+          git pull --ff-only                       # get latest compose/Dockerfiles
+          docker compose pull web server           # fetch new images (web from GHCR, server local build)
+          docker compose up -d                     # recreate only changed services
+          docker image prune -f                    # optional: free space
+        EOF

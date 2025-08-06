@@ -1,27 +1,36 @@
-# ────────── build stage ───────────────────────────────────────────────
+# -------- build stage --------
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# 1. install *all* deps (build needs tsc, etc.)
+# Copy package files first for better Docker layer caching
 COPY package*.json ./
 RUN npm ci
 
-# 2. compile TS → dist/
+# Copy source code and build
 COPY . .
 RUN npm run build
 
-# ────────── runtime (stage-2) ─────────────────────────────────────────
+# -------- runtime --------
 FROM node:20-alpine
 WORKDIR /app
 
-# copy just the bits we need from the builder image
+# Copy package files and install production dependencies
 COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist          ./dist
+RUN npm ci --only=production && npm cache clean --force
 
-# copy the seed file for index initialization
-COPY jobs_seed.json ./
+# Copy built application
+COPY --from=builder /app/dist ./dist
 
+# Copy the jobs seed data (must be pulled with git lfs before build)
+COPY --from=builder /app/jobs_seed.json ./
+
+# Set production environment
 ENV NODE_ENV=production
-# Run the ensure script first, then start the main server
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD node -e "require('http').get('http://localhost:4000/health', (res) => process.exit(res.statusCode === 200 ? 0 : 1))"
+
+# Start the application
 CMD ["sh", "-c", "node dist/scripts/ensureJobsIdx.js && node dist/index.js"]
+    

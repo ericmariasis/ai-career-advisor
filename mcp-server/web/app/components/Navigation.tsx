@@ -12,7 +12,7 @@ export default function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">🎯 AI Career Advisor</h1>
+              <h1 className="text-xl font-bold text-gray-900">🎯 Career Code Advisor</h1>
             </Link>
             
             <div className="hidden md:flex items-center space-x-6">

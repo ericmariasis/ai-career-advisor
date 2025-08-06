@@ -237,7 +237,7 @@ export default function Home() {
     <div className="min-h-screen bg-white">
       {/* Header with Live Counter */}
       <header className="sticky top-0 z-40 flex items-center justify-between bg-white border-b px-6 py-4 shadow-sm">
-        <h1 className="text-2xl font-bold text-gray-900">AI Career Advisor</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Career Code Advisor</h1>
         <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2 text-sm text-gray-800">
             <span>Live favorites:</span>

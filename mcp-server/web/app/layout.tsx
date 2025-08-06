@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Career Advisor - Find Your Perfect Job",
+  title: "Career Code Advisor - Find Your Perfect Job",
   description: "Intelligent job search powered by AI, Redis, and real-time analytics",
 };
 

@@ -105,11 +105,14 @@ jobs:
             git reset --hard origin/main
             cd mcp-server
 
-            echo "ALGOLIA_APP_ID=${ALGOLIA_APP_ID}" > .env
-            echo "ALGOLIA_ADMIN_KEY=${ALGOLIA_ADMIN_KEY}" >> .env
-            echo "ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}" >> .env
-            echo "ALGOLIA_INDEX=${ALGOLIA_INDEX}" >> .env
-            echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env
+            # Create .env file with echo commands
+            cat > .env << 'EOF'
+ALGOLIA_APP_ID=${ALGOLIA_APP_ID}
+ALGOLIA_ADMIN_KEY=${ALGOLIA_ADMIN_KEY}
+ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}
+ALGOLIA_INDEX=${ALGOLIA_INDEX}
+OPENAI_API_KEY=${OPENAI_API_KEY}
+EOF
 
             docker compose pull web server
             docker compose up -d

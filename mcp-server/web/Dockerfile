@@ -29,6 +29,14 @@
     # ---- runtime stage ----
 FROM node:20-bookworm-slim AS runner
 
+# repeat the ARGs *and* promote them to ENV so they exist at runtime
+ARG NEXT_PUBLIC_ALGOLIA_APP_ID
+ARG NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY
+ARG NEXT_PUBLIC_ALGOLIA_INDEX
+ENV NEXT_PUBLIC_ALGOLIA_APP_ID=$NEXT_PUBLIC_ALGOLIA_APP_ID \
+    NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY=$NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY \
+    NEXT_PUBLIC_ALGOLIA_INDEX=$NEXT_PUBLIC_ALGOLIA_INDEX
+
 # Install both runtime libraries AND build tools to rebuild native modules
 RUN apt-get update && apt-get install -y --no-install-recommends \
     # Runtime libraries

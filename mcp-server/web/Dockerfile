@@ -1,6 +1,16 @@
 # ---- builder stage ----
     FROM node:20-bookworm-slim AS builder
 
+    # Add build arguments for Next.js public environment variables
+    ARG NEXT_PUBLIC_ALGOLIA_APP_ID
+    ARG NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY
+    ARG NEXT_PUBLIC_ALGOLIA_INDEX
+
+    # Set environment variables for the build process
+    ENV NEXT_PUBLIC_ALGOLIA_APP_ID=$NEXT_PUBLIC_ALGOLIA_APP_ID
+    ENV NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY=$NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY
+    ENV NEXT_PUBLIC_ALGOLIA_INDEX=$NEXT_PUBLIC_ALGOLIA_INDEX
+
     RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates curl python3 build-essential \
     libcairo2-dev libjpeg-dev libpango1.0-dev libgif-dev librsvg2-dev \

@@ -97,8 +97,15 @@ jobs:
           ALGOLIA_INDEX: ${{ secrets.ALGOLIA_INDEX }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
-          # Pull latest code and images
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && git pull --ff-only && docker compose pull web server"
+          # Pull latest code and images on the VM
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" <<'VM'
+            set -e
+            cd ~/ai-career-advisor
+            git fetch --all
+            git reset --hard origin/main
+            cd mcp-server
+            docker compose pull web server
+VM
           
           # Create .env file on the server
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cat > ~/ai-career-advisor/mcp-server/.env << 'ENVEOF'

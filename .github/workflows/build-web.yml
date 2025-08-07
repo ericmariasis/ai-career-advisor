@@ -63,7 +63,7 @@ jobs:
         ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST <<'EOF'
           set -e
           cd ~/ai-career-advisor/mcp-server
-          git pull --ff-only                       # get latest compose/Dockerfiles
+          git fetch --all && git reset --hard origin/main
           docker compose pull web server           # fetch new images (web from GHCR, server local build)
           docker compose up -d                     # recreate only changed services
           docker image prune -f                    # optional: free space

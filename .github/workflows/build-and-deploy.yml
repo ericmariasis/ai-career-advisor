@@ -112,7 +112,7 @@ jobs:
             	ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}
             	ALGOLIA_INDEX=${ALGOLIA_INDEX}
             	OPENAI_API_KEY=${OPENAI_API_KEY}
-ENVEOF
+            ENVEOF
 
             docker compose pull web server
             docker compose up -d

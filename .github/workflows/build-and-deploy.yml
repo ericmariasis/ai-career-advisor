@@ -104,17 +104,15 @@ jobs:
             git fetch --all
             git reset --hard origin/main
             cd mcp-server
-            docker compose pull web server
-          VM
-          
-          # Create .env file on the server
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cat > ~/ai-career-advisor/mcp-server/.env << 'ENVEOF'
+            cat > ~/ai-career-advisor/mcp-server/.env <<'ENVEOF'
           ALGOLIA_APP_ID=$ALGOLIA_APP_ID
           ALGOLIA_ADMIN_KEY=$ALGOLIA_ADMIN_KEY
           ALGOLIA_SEARCH_KEY=$ALGOLIA_SEARCH_KEY
           ALGOLIA_INDEX=$ALGOLIA_INDEX
           OPENAI_API_KEY=$OPENAI_API_KEY
-          ENVEOF"
+          ENVEOF
+            docker compose pull web server
+          VM
           
           # Restart the stack
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && docker compose down --remove-orphans && docker compose up -d"

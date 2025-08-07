@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 
 // Single source of truth for the dashboard URL
-const DASHBOARD_URL = 'http://localhost:3001/d/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&from=now-6h&to=now&kiosk';
+const DASHBOARD_URL = 'http://34.206.226.151:3001/d/cetm6vg7cvwu8d/favorites-per-minute?orgId=1&from=now-6h&to=now&kiosk';
 
 export default function MetricsPage() {
   const [showDashboard, setShowDashboard] = useState(false);

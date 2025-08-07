@@ -38,10 +38,8 @@ services:
     depends_on:
       - web
       - grafana
-  server:                       # 👈 new
-    build:
-      context: .
-      dockerfile: Dockerfile    # see below
+  server:
+    image: ghcr.io/ericmariasis/ai-server:latest
     env_file:
       - .env.docker
     environment:

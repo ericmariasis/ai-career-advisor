@@ -2,17 +2,30 @@
 services:
   redis:
     image: redis/redis-stack-server:7.2.0-v9
-    ports: ["6379:6379"]
+    container_name: redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data          # <- persists keys & modules
+    expose:
+      - "6379"                    # internal only; no host-level publish
 
   grafana:
     image: grafana/grafana-oss:10.4.4
-    ports: ["3001:3000"]
+    container_name: grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"               # reachable by Nginx & for quick testing
     environment:
+      # allow iframe embeds & anonymous viewer
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      # auto-install Redis data-source plugin
+      - GF_INSTALL_PLUGINS=redis-datasource
     volumes:
       - grafana-data:/var/lib/grafana
+      # (optional) mount provisioning so dashboards/datasources stay version-controlled
+      - ./grafana/provisioning:/etc/grafana/provisioning
     depends_on:
       - redis
   web:

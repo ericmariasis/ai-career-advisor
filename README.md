@@ -4,7 +4,7 @@
 > Technologies: Next.js 14 · Redis Stack 8 (Vector + Search + Streams) · OpenAI · Grafana · Docker
 
 ## 🚀 Live Demo
-**COMING SOON** – will add once deployed.
+**COMING SOON TO THEATRES** – will add once deployed.
 
 ## 🎯 Key Features
 | ⚡ | Feature | Wow-Factor |

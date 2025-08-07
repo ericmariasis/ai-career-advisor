@@ -67,7 +67,7 @@ services:
       - "4000:4000"
     depends_on:
       - redis
-
+# grafana and redis
 volumes:
   grafana-data:
   redis-data:

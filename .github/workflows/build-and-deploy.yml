@@ -88,13 +88,21 @@ jobs:
       env:
         HOST: ${{ secrets.LS_HOST }}
         USER: ${{ secrets.LS_USER }}
+        ALGOLIA_APP_ID: ${{ secrets.ALGOLIA_APP_ID }}
+        ALGOLIA_ADMIN_KEY: ${{ secrets.ALGOLIA_ADMIN_KEY }}
+        ALGOLIA_SEARCH_KEY: ${{ secrets.ALGOLIA_SEARCH_KEY }}
+        ALGOLIA_INDEX: ${{ secrets.ALGOLIA_INDEX }}
       run: |
-        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST <<'EOF'
+        ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST <<EOF
           set -e
           cd ~/ai-career-advisor/mcp-server
           git pull --ff-only                       # get latest compose/Dockerfiles
           docker compose pull web server           # fetch new images from GHCR
-          docker compose up -d                     # recreate only changed services
+          ALGOLIA_APP_ID="$ALGOLIA_APP_ID" \
+          ALGOLIA_ADMIN_KEY="$ALGOLIA_ADMIN_KEY" \
+          ALGOLIA_SEARCH_KEY="$ALGOLIA_SEARCH_KEY" \
+          ALGOLIA_INDEX="$ALGOLIA_INDEX" \
+          docker compose up -d
           docker image prune -f                    # optional: free space
           echo "✅ Deployment completed successfully!"
         EOF

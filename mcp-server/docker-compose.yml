@@ -1,7 +1,7 @@
 # mcp-server/docker-compose.yml
 services:
   redis:
-    image: redis/redis-stack-server:7.2.0-v9   # same as before
+    image: redis/redis-stack-server:7.2.0-v9
     ports: ["6379:6379"]
 
   grafana:
@@ -11,15 +11,16 @@ services:
       - GF_SECURITY_ALLOW_EMBEDDING=true
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
-      # Remove the subpath settings
     volumes:
       - grafana-data:/var/lib/grafana
     depends_on:
       - redis
   web:
     image: ghcr.io/ericmariasis/ai-web:latest
-    env_file:
-      - .env.docker
+    environment:
+      - NEXT_PUBLIC_ALGOLIA_APP_ID=${ALGOLIA_APP_ID}
+      - NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY=${ALGOLIA_SEARCH_KEY}
+      - NEXT_PUBLIC_ALGOLIA_INDEX=${ALGOLIA_INDEX}
     expose: ["3000"]
     depends_on:
       - server
@@ -27,24 +28,25 @@ services:
   nginx:
     image: nginx:1.27-alpine
     ports: 
-      - "80:80"           # Production port mapping
-      - "443:443"         # HTTPS port for SSL
+      - "80:80"
+      - "443:443"
     volumes:
       - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
       - ./nginx/common-routes.inc:/etc/nginx/conf.d/common-routes.inc:ro
-      # Mount Let's Encrypt certificates (uncomment when ready for production SSL)
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - web
       - grafana
   server:
     image: ghcr.io/ericmariasis/ai-server:latest
-    env_file:
-      - .env.docker
     environment:
+      - ALGOLIA_APP_ID=${ALGOLIA_APP_ID}
+      - ALGOLIA_ADMIN_KEY=${ALGOLIA_ADMIN_KEY}
+      - ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}
+      - ALGOLIA_INDEX=${ALGOLIA_INDEX}
       - REDIS_URL=redis://redis:6379
-      - PORT=4000               # whatever your server listens on
+      - PORT=4000
     ports:
       - "4000:4000"
     depends_on:

@@ -1,3 +1,7 @@
 { 
-    "homepage.png": "Home page"
+    "homepage.png": "Home page",
+    "01-home-search.png": "search bar",
+    "02-job-modal.png": "Job card",
+    "05-resume-match.png": "Resume match",
+    "06-semantic-suggest.png": "Semantic suggestions"
 }

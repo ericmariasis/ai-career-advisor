@@ -102,6 +102,7 @@ jobs:
           ALGOLIA_ADMIN_KEY="$ALGOLIA_ADMIN_KEY" \
           ALGOLIA_SEARCH_KEY="$ALGOLIA_SEARCH_KEY" \
           ALGOLIA_INDEX="$ALGOLIA_INDEX" \
+          docker compose down --remove-orphans && \
           docker compose up -d
           docker image prune -f                    # optional: free space
           echo "✅ Deployment completed successfully!"

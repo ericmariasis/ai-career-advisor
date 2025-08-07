@@ -105,7 +105,7 @@ jobs:
             git reset --hard origin/main
             cd mcp-server
             docker compose pull web server
-VM
+          VM
           
           # Create .env file on the server
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cat > ~/ai-career-advisor/mcp-server/.env << 'ENVEOF'

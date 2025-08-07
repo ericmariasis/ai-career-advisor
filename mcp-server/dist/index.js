@@ -18,6 +18,7 @@ const createCacheIndex_1 = require("./lib/createCacheIndex");
 const rateLimiter_1 = require("./middleware/rateLimiter");
 const requestValidation_1 = require("./middleware/requestValidation");
 const usageMonitor_1 = require("./middleware/usageMonitor");
+const redis_1 = __importDefault(require("./lib/redis"));
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 // Apply general rate limiting to all API routes
@@ -65,6 +66,49 @@ app.get('/health', (_req, res) => {
 /*  Start the server                                             */
 /* ------------------------------------------------------------- */
 const PORT = process.env.PORT || 4000;
+// Graceful shutdown handling
+async function gracefulShutdown(signal) {
+    console.log(`🛑 Received ${signal}, shutting down gracefully...`);
+    try {
+        // Close main Redis client
+        try {
+            await redis_1.default.quit();
+            console.log('🔌 Main Redis connection closed');
+        }
+        catch (err) {
+            console.log('⚠️  Main Redis client already closed or not available');
+        }
+        // Close pub/sub clients
+        try {
+            const pubClient = await (0, pubsub_1.getPubClient)();
+            if (pubClient) {
+                await pubClient.quit();
+                console.log('🔌 Redis publisher closed');
+            }
+        }
+        catch (err) {
+            console.log('⚠️  Redis publisher already closed or not available');
+        }
+        try {
+            const subClient = await (0, pubsub_1.getSubClient)();
+            if (subClient) {
+                await subClient.quit();
+                console.log('🔌 Redis subscriber closed');
+            }
+        }
+        catch (err) {
+            console.log('⚠️  Redis subscriber already closed or not available');
+        }
+        console.log('✅ Graceful shutdown completed');
+    }
+    catch (error) {
+        console.error('❌ Error during graceful shutdown:', error);
+    }
+    process.exit(0);
+}
+// Handle shutdown signals
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 (async () => {
     try {
         await (0, pubsub_1.initializePubSub)();

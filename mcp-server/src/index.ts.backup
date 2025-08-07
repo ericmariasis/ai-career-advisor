@@ -8,13 +8,12 @@ import jobsRouter from './routes/jobs';
 import sseFavoritesRouter from './routes/sse-favorites';
 import favoritesTotalRouter from './routes/favorites-total';
 import favoritesTrendRouter from './routes/favorites-trend';
-import { initializePubSub, getPubClient, getSubClient } from './lib/pubsub';
+import { initializePubSub } from './lib/pubsub';
 import { jobsIndex } from './lib/algolia'; // still used by /recommend
 import { ensureCacheIndex } from './lib/createCacheIndex';
 import { generalApiLimiter, searchLimiter } from './middleware/rateLimiter';
 import { validateSearchRequest } from './middleware/requestValidation';
 import { usageMonitor } from './middleware/usageMonitor';
-import redis from './lib/redis';
 
 dotenv.config();
 
@@ -81,33 +80,28 @@ async function gracefulShutdown(signal: string) {
   console.log(`🛑 Received ${signal}, shutting down gracefully...`);
   
   try {
+    // Close Redis connections
+    const redis = await import('./lib/redis');
+    const { getPubClient, getSubClient } = await import('./lib/pubsub');
+    
     // Close main Redis client
-    try {
-      await redis.quit();
+    if (redis.default) {
+      await redis.default.quit();
       console.log('🔌 Main Redis connection closed');
-    } catch (err) {
-      console.log('⚠️  Main Redis client already closed or not available');
     }
     
     // Close pub/sub clients
-    try {
-      const pubClient = await getPubClient();
-      if (pubClient) {
-        await pubClient.quit();
-        console.log('🔌 Redis publisher closed');
-      }
-    } catch (err) {
-      console.log('⚠️  Redis publisher already closed or not available');
+    const pubClient = await getPubClient();
+    const subClient = await getSubClient();
+    
+    if (pubClient) {
+      await pubClient.quit();
+      console.log('🔌 Redis publisher closed');
     }
     
-    try {
-      const subClient = await getSubClient();
-      if (subClient) {
-        await subClient.quit();
-        console.log('🔌 Redis subscriber closed');
-      }
-    } catch (err) {
-      console.log('⚠️  Redis subscriber already closed or not available');
+    if (subClient) {
+      await subClient.quit();
+      console.log('🔌 Redis subscriber closed');
     }
     
     console.log('✅ Graceful shutdown completed');

@@ -65,6 +65,12 @@ services:
       - PORT=4000
     ports:
       - "4000:4000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     depends_on:
       - redis
 # grafana and redis

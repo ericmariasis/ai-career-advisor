@@ -98,24 +98,24 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Pull latest code and images on the VM
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" <<'VM'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" <<VM
             set -e
             cd ~/ai-career-advisor
             git fetch --all
             git reset --hard origin/main
             cd mcp-server
-            cat > ~/ai-career-advisor/mcp-server/.env <<'ENVEOF'
-          ALGOLIA_APP_ID=$ALGOLIA_APP_ID
-          ALGOLIA_ADMIN_KEY=$ALGOLIA_ADMIN_KEY
-          ALGOLIA_SEARCH_KEY=$ALGOLIA_SEARCH_KEY
-          ALGOLIA_INDEX=$ALGOLIA_INDEX
-          OPENAI_API_KEY=$OPENAI_API_KEY
-          ENVEOF
+            # flush-left here-doc so no leading spaces go into the file
+cat > .env <<'ENVEOF'
+ALGOLIA_APP_ID=${ALGOLIA_APP_ID}
+ALGOLIA_ADMIN_KEY=${ALGOLIA_ADMIN_KEY}
+ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}
+ALGOLIA_INDEX=${ALGOLIA_INDEX}
+OPENAI_API_KEY=${OPENAI_API_KEY}
+ENVEOF
+            cat .env
             docker compose pull web server
+            docker compose up -d
           VM
-          
-          # Restart the stack
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && docker compose down --remove-orphans && docker compose up -d"
           
           # Verify the deployment
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && echo 'Checking .env file:' && cat .env && echo 'Checking container environment:' && docker compose exec web env | grep NEXT_PUBLIC || echo 'No NEXT_PUBLIC vars found'"

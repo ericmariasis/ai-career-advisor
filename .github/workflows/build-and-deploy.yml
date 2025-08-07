@@ -112,11 +112,11 @@ jobs:
             echo "OPENAI_API_KEY=${OPENAI_API_KEY}" >> .env
 
             docker compose pull web server
-            docker compose up -d
+            docker compose up -d --force-recreate web server
           VM
           
           # Verify the deployment
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && echo 'Checking .env file:' && cat .env && echo 'Checking container environment:' && docker compose exec web env | grep NEXT_PUBLIC || echo 'No NEXT_PUBLIC vars found'"
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && ls -l .env && grep -E 'ALGOLIA_|OPENAI' .env"
           
           # Cleanup
           ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes $USER@$HOST "cd ~/ai-career-advisor/mcp-server && docker image prune -f && echo '✅ Deployment completed successfully!'"

@@ -45,6 +45,7 @@ services:
       - ALGOLIA_ADMIN_KEY=${ALGOLIA_ADMIN_KEY}
       - ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}
       - ALGOLIA_INDEX=${ALGOLIA_INDEX}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - REDIS_URL=redis://redis:6379
       - PORT=4000
     ports:

@@ -98,7 +98,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           # Pull latest code and images on the VM
-          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" <<'VM'
+          ssh -i ~/.ssh/id_ed25519 -o StrictHostKeyChecking=yes "$USER@$HOST" <<VM
             set -e
             cd ~/ai-career-advisor
             git fetch --all
@@ -106,7 +106,7 @@ jobs:
             cd mcp-server
 
             # dash after << strips one leading **TAB** from every line
-            cat > .env <<-'ENVEOF'
+            cat > .env <<-ENVEOF
             	ALGOLIA_APP_ID=${ALGOLIA_APP_ID}
             	ALGOLIA_ADMIN_KEY=${ALGOLIA_ADMIN_KEY}
             	ALGOLIA_SEARCH_KEY=${ALGOLIA_SEARCH_KEY}

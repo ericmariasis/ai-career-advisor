@@ -18,6 +18,8 @@ location /api/events/ {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
   
   # Ensure no buffering for real-time data
   proxy_no_cache 1;
@@ -31,6 +33,8 @@ location = /api/resume/upload {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
   
   # Allow large file uploads for resumes
   client_max_body_size 10M;
@@ -44,6 +48,8 @@ location /api/resume {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
 }
 
 # API proxy to backend server (for search, favorites, etc.)
@@ -53,6 +59,8 @@ location /api/ {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
 }
 
 # Front-end (assumes container called `web` on port 3000)
@@ -62,18 +70,44 @@ location / {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
 }
 
-# Grafana on a sub-path
+# Canonicalize subpath to include trailing slash
+location = /grafana {
+  return 301 /grafana/;
+}
+
+# Grafana on a sub-path (allow embedding only here)
 location /grafana/ {
   proxy_pass http://grafana:3000/;
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  
+  proxy_read_timeout 600s;
+  proxy_send_timeout 600s;
+
   # Additional headers for Grafana
   proxy_set_header X-Forwarded-Host $host;
   proxy_set_header X-Forwarded-Server $host;
   proxy_set_header X-Forwarded-Port $server_port;
+
+  # Relax frame protections for Grafana only (same-origin)
+  add_header X-Frame-Options SAMEORIGIN always;
+  add_header Content-Security-Policy "frame-ancestors 'self'" always;
+
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+  add_header X-Content-Type-Options nosniff always;
+  add_header X-XSS-Protection "1; mode=block" always;
+  add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+}
+
+# Grafana live websocket upgrades
+location /grafana/api/live/ {
+  proxy_http_version 1.1;
+  proxy_set_header Upgrade $http_upgrade;
+  proxy_set_header Connection "upgrade";
+  proxy_pass http://grafana:3000/api/live/;
 }

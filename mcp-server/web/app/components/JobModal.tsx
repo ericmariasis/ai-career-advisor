@@ -24,8 +24,7 @@ export default function JobModal({ job, onClose, saved, onToggleSave }: Props) {
     aa('viewedObjectIDs', {
       index: 'jobs',
       eventName: 'Job viewed',
-      objectIDs: [job.objectID],
-      userToken: getUserToken(),
+      objectIDs: [String(job.objectID)],
     });
   }, [job]);
 

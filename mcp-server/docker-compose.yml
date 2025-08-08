@@ -26,7 +26,7 @@ services:
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
       # auto-install Redis data-source plugin
       - GF_INSTALL_PLUGINS=redis-datasource
-      - GF_SERVER_ROOT_URL=https://careercodeadvisor.com/grafana/
+      - GF_SERVER_ROOT_URL=https://careercodeadvisor.com/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana-data:/var/lib/grafana

@@ -81,7 +81,7 @@ location /grafana/ {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_set_header X-Forwarded-Prefix /grafana/;
+  proxy_set_header X-Forwarded-Prefix /grafana;
   proxy_set_header X-Forwarded-Uri $request_uri; 
   proxy_read_timeout 600s;
   proxy_send_timeout 600s;

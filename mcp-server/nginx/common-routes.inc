@@ -18,8 +18,6 @@ location /api/events/ {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_read_timeout 600s;
-  proxy_send_timeout 600s;
   
   # Ensure no buffering for real-time data
   proxy_no_cache 1;
@@ -33,8 +31,6 @@ location = /api/resume/upload {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_read_timeout 600s;
-  proxy_send_timeout 600s;
   
   # Allow large file uploads for resumes
   client_max_body_size 10M;
@@ -48,8 +44,6 @@ location /api/resume {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_read_timeout 600s;
-  proxy_send_timeout 600s;
 }
 
 # API proxy to backend server (for search, favorites, etc.)
@@ -59,8 +53,6 @@ location /api/ {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_read_timeout 600s;
-  proxy_send_timeout 600s;
 }
 
 # Front-end (assumes container called `web` on port 3000)
@@ -70,8 +62,6 @@ location / {
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
-  proxy_read_timeout 600s;
-  proxy_send_timeout 600s;
 }
 
 # Canonicalize subpath to include trailing slash

@@ -25,8 +25,8 @@ Traditional job boards rely on brittle keyword search and clunky filters. **Care
 - **Autocomplete & Command‑K**  
   Start with **autocomplete**, or press **`Ctrl+K`** for a quick launcher to jump around faster. :contentReference[oaicite:1]{index=1}
 
-- **Saved Jobs + live Dashboard**  
-  Save (⭐) roles you like. The **Dashboard** shows a live favorites count and a **60‑minute trend** for activity. :contentReference[oaicite:2]{index=2}
+- **Saved Jobs**  
+  Save (⭐) roles you like and see the count go up real time in the upper right of the page. :contentReference[oaicite:2]{index=2}
 
 - **Semantic caching**  
   AI analyses (résumé skill extraction, brief coaching snippets) are cached by **embedding similarity** to reduce latency and API cost.
@@ -42,7 +42,7 @@ Traditional job boards rely on brittle keyword search and clunky filters. **Care
   For résumé feedback/matching, we store AI outputs alongside an **embedding of the input**. On similar inputs, we retrieve from Redis instead of re‑calling the LLM.
 
 - **Real‑time counters/trend (Streams)**  
-  Save/unsave activity is recorded to Redis to support a **live favorites counter** and a **rolling 60‑minute trend** on the Dashboard. (This is how we demonstrate the “real‑time” part of the experience in a visible way.)
+  Save/unsave activity is recorded to Redis to support a **live favorites counter**.
 
 ## Screenshots
 - **Home + Search — live results + filters**

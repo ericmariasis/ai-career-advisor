@@ -1,8 +1,8 @@
 # mcp-server/docker-compose.yml
+name: ai-career-advisor
 services:
   redis:
     image: redis/redis-stack-server:7.2.0-v9
-    container_name: redis
     restart: unless-stopped
     volumes:
       - redis-data:/data          # <- persists keys & modules
@@ -15,7 +15,6 @@ services:
       retries: 40
   grafana:
     image: grafana/grafana-oss:10.4.4
-    container_name: grafana
     restart: unless-stopped
     ports:
       - "3001:3000"               # reachable by Nginx & for quick testing

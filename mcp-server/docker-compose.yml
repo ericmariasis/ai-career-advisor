@@ -8,7 +8,11 @@ services:
       - redis-data:/data          # <- persists keys & modules
     expose:
       - "6379"                    # internal only; no host-level publish
-
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h 127.0.0.1 -p 6379 ping | grep -q PONG"]
+      interval: 3s
+      timeout: 1s
+      retries: 40
   grafana:
     image: grafana/grafana-oss:10.4.4
     container_name: grafana
@@ -32,6 +36,7 @@ services:
       - redis
   web:
     image: ghcr.io/ericmariasis/ai-web:latest
+    restart: unless-stopped
     environment:
       - NEXT_PUBLIC_ALGOLIA_APP_ID=${ALGOLIA_APP_ID}
       - NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY=${ALGOLIA_SEARCH_KEY}
@@ -44,6 +49,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     ports: 
       - "80:80"
       - "443:443"
@@ -74,7 +80,9 @@ services:
       retries: 3
       start_period: 40s
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
 # grafana and redis
 volumes:
   grafana-data:

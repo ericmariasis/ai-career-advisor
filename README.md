@@ -59,6 +59,79 @@ Traditional job boards rely on brittle keyword search and clunky filters. **Care
 
 ---
 
+## 🧩 Local Environment Quickstart
+
+### Prereqs
+- Node 18+ (20+ recommended)
+- Docker (for local Redis Stack)
+- OpenAI API key
+
+### 1) Clone & install
+    git clone https://github.com/ericmariasis/ai-career-advisor
+    cd ai-career-advisor/mcp-server
+    npm install
+
+### 2) Environment
+Create `.env.local`:
+
+    # Redis (local)
+    REDIS_URL=redis://localhost:6379
+    # If using Redis Cloud or Lightsail Redis with TLS/auth, use rediss:// and set a password:
+    # REDIS_URL=rediss://<host>:<port>
+    # REDIS_PASSWORD=your_redis_password
+
+    # OpenAI
+    OPENAI_API_KEY=sk-...
+
+    # App
+    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+### 3) Run Redis 8 locally
+    docker run -it --rm -p 6379:6379 redis/redis-stack:latest
+    # Optional GUI: add -p 8001:8001 for Redis Insight at http://localhost:8001
+
+### 4) Build (required for the seed script)
+    npm run build
+
+### 5) Seed / ensure the search index (and load jobs)
+    node dist/scripts/ensureJobsIdx.js
+
+### 6) Start the app
+    npm run dev
+    # Visit http://localhost:3000
+
+---
+
+## 🏗️ Deployment Notes (prod)
+- **Hosting:** AWS Lightsail for the app.
+- **Redis:** Redis Stack on Lightsail. Provide `REDIS_URL` (use `rediss://` when TLS/auth is enabled) and `REDIS_PASSWORD` if applicable.
+- **Environment:** Set `REDIS_URL`, `REDIS_PASSWORD` (if used), `OPENAI_API_KEY`, and `NEXT_PUBLIC_SITE_URL`.
+- **Build & run:**
+    
+        npm run build
+        npm run start
+
+- **Operational tips:**
+  - Pre-seed embeddings/index on deploy to keep RediSearch warm.
+  - Consider a process manager (e.g., `pm2`) if not using a managed runtime.
+  - Monitor Redis memory and vector index size as your corpus grows.
+
+---
+
+## 🛣️ Roadmap
+- Profile-aware ranking (learn from saves/clicks).
+- Alerts for new roles that match saved skills.
+- Multi-embedding provider support.
+- Deeper analytics (Grafana/Redis Insight panels).
+
+---
+
+## 📚 Tech
+Next.js 14 • TypeScript • Redis 8 (RediSearch + Vector, Streams) • OpenAI • Docker
+
+
+---
+
 ## 🗺️ Architecture (high level)
 
 ```mermaid

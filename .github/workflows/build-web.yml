@@ -28,19 +28,22 @@ jobs:
     - name: Build & push web image
       uses: docker/build-push-action@v5
       with:
-        context: ./mcp-server/web          # <-- path to your Next.js app
-        file: ./mcp-server/web/Dockerfile  # (same Dockerfile you already have)
+        context: ./mcp-server/web
+        file: ./mcp-server/web/Dockerfile
         push: true
         tags: ghcr.io/${{ github.repository_owner }}/ai-web:latest
         cache-from: type=gha
         cache-to:   type=gha,mode=max
+        build-args: |
+          NEXT_PUBLIC_ALGOLIA_APP_ID=${{ secrets.ALGOLIA_APP_ID }}
+          NEXT_PUBLIC_ALGOLIA_SEARCH_ONLY_API_KEY=${{ secrets.ALGOLIA_SEARCH_KEY }}
+          NEXT_PUBLIC_ALGOLIA_INDEX=${{ secrets.ALGOLIA_INDEX }}
 
   deploy:
-    needs: build                # run only if build job succeeded
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
-    # --- prepare ssh -------------------------------------------
     - name: Install ssh client
       run: sudo apt-get update && sudo apt-get install -y openssh-client
 
@@ -54,7 +57,6 @@ jobs:
         echo "${{ secrets.LS_SSH_KEY }}" > ~/.ssh/id_ed25519
         chmod 600 ~/.ssh/id_ed25519
 
-    # --- deploy -------------------------------------------------
     - name: Pull images & restart stack on Lightsail
       env:
         HOST: ${{ secrets.LS_HOST }}
@@ -64,7 +66,7 @@ jobs:
           set -e
           cd ~/ai-career-advisor/mcp-server
           git fetch --all && git reset --hard origin/main
-          docker compose pull web server           # fetch new images (web from GHCR, server local build)
-          docker compose up -d                     # recreate only changed services
-          docker image prune -f                    # optional: free space
+          docker compose pull web server
+          docker compose up -d
+          docker image prune -f
         EOF

@@ -49,6 +49,8 @@ location /api/resume {
 # API proxy to backend server (for search, favorites, etc.)
 location /api/ {
   proxy_pass http://server:4000;
+  add_header X-Frame-Options DENY always;
+  add_header Content-Security-Policy "frame-ancestors 'none'" always;
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -58,6 +60,8 @@ location /api/ {
 # Front-end (assumes container called `web` on port 3000)
 location / {
   proxy_pass http://web:3000;
+  add_header X-Frame-Options DENY always;
+  add_header Content-Security-Policy "frame-ancestors 'none'" always;
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -71,13 +75,13 @@ location = /grafana {
 
 # Grafana on a sub-path (allow embedding only here)
 location /grafana/ {
-  proxy_pass http://grafana:3000/;
+  proxy_http_version 1.1
+  proxy_pass http://grafana:3000/grafana/;
   proxy_set_header Host $host;
   proxy_set_header X-Real-IP $remote_addr;
   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
   proxy_set_header X-Forwarded-Proto $scheme;
   proxy_set_header X-Forwarded-Prefix /grafana;
-  proxy_set_header X-Forwarded-Uri    $request_uri;
   proxy_read_timeout 600s;
   proxy_send_timeout 600s;
 

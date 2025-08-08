@@ -7,7 +7,7 @@ Redis‑powered, AI‑augmented job search with real‑time insights.
 ---
 
 ## 🚀 Why this exists
-Traditional job boards rely on brittle keyword search and clunky filters. **Career Code Advisor** makes discovery **fast, relevant, and personal** using **hybrid search (full‑text + vectors)**, résumé‑aware matching, and real‑time UI.
+Traditional job boards rely on brittle keyword search and clunky filters. **Career Code Advisor** makes discovery **fast, relevant, and highly personal** using **hybrid search (full‑text + vectors)**, résumé‑aware matching, and real‑time UI.
 
 ---
 

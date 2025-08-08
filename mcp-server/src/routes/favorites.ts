@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import aa from '../insightsServer'
 import { getFavorites, toggleFavorite } from '../lib/store'
-import { redisConn } from '../lib/redisSearch'   // ← add loadDB
+import { redisConn } from '../lib/redisSearch'
 import { broadcastFavorite } from '../lib/pubsub'
+import { generalApiLimiter } from '../middleware/rateLimiter'
 
 const router = Router()
 
@@ -10,13 +11,22 @@ const router = Router()
  *  body: { objectID, queryID, position, userToken, save?: boolean }
  *  save defaults to true (= mark as favourite)
  */
-router.post('/', async (req, res) => {
+router.post('/', generalApiLimiter, async (req, res) => {
   try {
-      const { objectID, userToken, save = true } = req.body;
-      // queryID & position are optional﻿
-      const { queryID = undefined, position = 0 } = req.body;
+      const { objectID, userToken, save = true } = req.body as {
+        objectID?: string
+        userToken?: string
+        save?: boolean
+      };
+      // queryID & position are optional
+      const { queryID, position } = req.body as {
+        queryID?: string
+        position?: number
+      };
     
-      if (!objectID || !userToken) {
+      // Validate required fields as non-empty strings
+      if (typeof objectID !== 'string' || objectID.trim() === '' ||
+          typeof userToken !== 'string' || userToken.trim() === '') {
         return res.status(400).json({ error: 'objectID and userToken are required' });
       }
 
@@ -29,37 +39,49 @@ router.post('/', async (req, res) => {
     /* 1️⃣.5  store activity for trending data ---------------------- */
     try {
       const redis = await redisConn();
+      const delta = save ? 1 : -1;
       await redis.xAdd('favorites_activity', '*', {
-        'act': save ? '1' : '-1',
+        'delta': String(delta),
         'user': userToken,
         'job': objectID
       });
-      console.log(`📈 Added activity to stream: ${save ? '+1' : '-1'} for job ${objectID}`);
+      console.log(`📈 Added activity to stream: ${delta > 0 ? '+1' : '-1'} for job ${objectID}`);
     } catch (err) {
       console.error('Failed to write activity stream:', err);
     }
 
     /* 2️⃣  send Insights event ------------------------------------ */
+    const index = process.env.ALGOLIA_INDEX ?? 'jobs';
     if (save) {
-        // ► user clicked  ⭐  — we record it as a conversion *after* a search
+      // If we have a queryID, report a conversion after search; otherwise generic conversion
+      if (typeof queryID === 'string' && queryID.trim() !== '') {
         (aa as any)('convertedObjectIDsAfterSearch', {
-          index:      'jobs',
-          eventName:  'Job saved',
-          queryID,                   // ✅ allowed here
-          objectIDs:  [objectID],
+          index,
+          eventName: 'Job saved',
+          queryID,
+          objectIDs: [objectID],
           userToken,
-          eventSubtype: 'addToCart', // optional, fine to keep
+          ...(typeof position === 'number' ? { positions: [position] } : {}),
+          eventSubtype: 'addToCart',
         });
       } else {
-        // ► user un-starred  — still a conversion, but no longer tied to a search
         (aa as any)('convertedObjectIDs', {
-          index:      'jobs',
-          eventName:  'Job unsaved',
-          objectIDs:  [objectID],
+          index,
+          eventName: 'Job saved',
+          objectIDs: [objectID],
           userToken,
-          eventSubtype: 'removeFromCart', // optional (or omit)
+          eventSubtype: 'addToCart',
         });
       }
+    } else {
+      (aa as any)('convertedObjectIDs', {
+        index,
+        eventName: 'Job unsaved',
+        objectIDs: [objectID],
+        userToken,
+        eventSubtype: 'removeFromCart',
+      });
+    }
 
     /* 3️⃣  (optional) lookup job for snack-bar title -------------- */
     let title: string | undefined
@@ -77,7 +99,7 @@ router.post('/', async (req, res) => {
     res.json({ ok: true, total, savedTitle: title })
   } catch (err) {
     console.error(err)
-    res.status(500).json({ error: 'Failed to save favourite' })
+    res.status(500).json({ error: 'Failed to save favorite' })
   }
 })
 
@@ -91,9 +113,14 @@ router.get('/', async (req, res) => {
         .status(400)
         .json({ error: 'userToken query‑param required' });
     }
-  
-    const ids = await getFavorites(userToken);
-    return res.json({ ids });
+
+    try {
+      const ids = await getFavorites(userToken);
+      return res.json({ ids });
+    } catch (err) {
+      console.error('Failed to fetch favorites for user:', userToken, err);
+      return res.status(500).json({ error: 'Failed to fetch favorites' });
+    }
   });
 
   /* -------------------------------------------------------------
@@ -136,3 +163,4 @@ router.get('/details', async (req, res) => {
   
 
 export default router
+

@@ -17,7 +17,8 @@ export const aiEndpointLimiter = rateLimit({
   skipFailedRequests: true,
   // Custom key generator to include user agent for better tracking
   keyGenerator: (req: Request): string => {
-    return `${req.ip}_${req.get('User-Agent')?.slice(0, 50) || 'unknown'}`;
+    const ip = ipKeyGenerator(req.ip || 'unknown');
+    return `${ip}_${req.get('User-Agent')?.slice(0, 50) || 'unknown'}`;
   },
 });
 
